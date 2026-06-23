@@ -33,6 +33,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.15.0",
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.8",
@@ -45,6 +46,7 @@
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
     "prisma": "^6.13.0",
+    "prisma-erd-generator": "^2.4.3",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
