@@ -11,6 +11,7 @@ export interface IUserRepository {
   update(id: string, data: UpdateUserDto): Promise<UserResponseDto>;
   markAsDeleted(id: string): Promise<void>;
   markEmailVerified(id: string): Promise<void>;
+  assignRole(userId: string, roleName: string): Promise<void>;
   /** Temporary — used by health check to verify DB connectivity via auth.users */
   countUsers(): Promise<number>;
 }

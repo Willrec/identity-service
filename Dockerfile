@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.json ./
@@ -17,22 +17,21 @@ RUN pnpm prisma generate
 COPY src ./src
 RUN pnpm build
 
+# Prune devDependencies so runner copies only prod deps
+RUN pnpm prune --prod
+
 # ──────────────────────────────────────────────
 # Stage 2: runner
 # ──────────────────────────────────────────────
 FROM node:22-alpine AS runner
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
-
+# Copy pruned node_modules (prod-only, Prisma client already generated)
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY prisma ./prisma
 
 EXPOSE 3000

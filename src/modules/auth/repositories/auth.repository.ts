@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import type {
   IAuthRepository,
   SessionData,
@@ -7,6 +7,7 @@ import type {
   CreateRefreshTokenInput,
   CreateEmailVerificationTokenInput,
   CreatePasswordResetTokenInput,
+  CreateAuditLogInput,
 } from './auth.repository.interface.js';
 
 export class AuthRepository implements IAuthRepository {
@@ -129,5 +130,19 @@ export class AuthRepository implements IAuthRepository {
 
   async deleteAllUserPasswordResetTokens(userId: string): Promise<void> {
     await this.db.passwordResetToken.deleteMany({ where: { userId } });
+  }
+
+  // ── Audit log ──────────────────────────────────────────────────────────────
+
+  async createAuditLog(data: CreateAuditLogInput): Promise<void> {
+    await this.db.auditLog.create({
+      data: {
+        userId: data.userId ?? null,
+        action: data.action,
+        ip: data.ip ?? null,
+        userAgent: data.userAgent ?? null,
+        metadata: (data.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+      },
+    });
   }
 }

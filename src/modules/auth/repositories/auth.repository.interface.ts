@@ -52,6 +52,14 @@ export interface CreatePasswordResetTokenInput {
   expiresAt: Date;
 }
 
+export interface CreateAuditLogInput {
+  userId?: string;
+  action: string;
+  ip?: string;
+  userAgent?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface IAuthRepository {
   // Sessions
   createSession(data: CreateSessionInput): Promise<SessionData>;
@@ -77,4 +85,7 @@ export interface IAuthRepository {
   findPasswordResetToken(tokenHash: string): Promise<{ id: string; userId: string; expiresAt: Date } | null>;
   deletePasswordResetToken(id: string): Promise<void>;
   deleteAllUserPasswordResetTokens(userId: string): Promise<void>;
+
+  // Audit log
+  createAuditLog(data: CreateAuditLogInput): Promise<void>;
 }

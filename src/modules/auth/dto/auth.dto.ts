@@ -1,4 +1,5 @@
 import type { UserResponseDto } from '../../users/dto/user.dto.js';
+import type { UserStatus } from '../../../shared/types/domain.types.js';
 
 // ── Inputs ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,12 @@ export interface AuthTokensDto {
 export interface AuthResponseDto {
   user: UserResponseDto;
   tokens: AuthTokensDto;
+}
+
+export interface RegisterResponseDto {
+  id: string;
+  email: string;
+  status: UserStatus;
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────

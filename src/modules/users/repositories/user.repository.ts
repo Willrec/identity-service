@@ -82,4 +82,14 @@ export class UserRepository implements IUserRepository {
       data: { emailVerified: true, updatedAt: new Date() },
     });
   }
+
+  async assignRole(userId: string, roleName: string): Promise<void> {
+    const role = await this.db.role.findUnique({ where: { name: roleName } });
+    if (!role) return; // role not seeded yet — skip silently
+    await this.db.userRole.create({ data: { userId, roleId: role.id } });
+  }
+
+  async countUsers(): Promise<number> {
+    return this.db.user.count();
+  }
 }
