@@ -13,8 +13,11 @@ const envSchema = z.object({
         .map((o) => o.trim())
         .filter(Boolean),
     ),
-  JWT_ACCESS_SECRET: z.string().min(32),
-  JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_PRIVATE_KEY: z.string().min(1),
+  JWT_PUBLIC_KEY: z.string().min(1),
+  JWT_ACCESS_TOKEN_EXPIRES_IN: z.string().default('15m'),
+  JWT_ACCESS_SECRET: z.string().min(32).optional(),
+  JWT_REFRESH_SECRET: z.string().min(32).optional(),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15),
 });
 
