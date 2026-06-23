@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
+import { env } from '../../../config/env.js';
 
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = env.BCRYPT_SALT_ROUNDS;
 
 export class PasswordService {
   async hash(password: string): Promise<string> {

@@ -15,6 +15,7 @@ const envSchema = z.object({
     ),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
+  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15),
 });
 
 const parsed = envSchema.safeParse(process.env);
