@@ -134,8 +134,9 @@ export class AuthRepository implements IAuthRepository {
 
   // ── Audit log ──────────────────────────────────────────────────────────────
 
-  async createAuditLog(data: CreateAuditLogInput): Promise<void> {
-    await this.db.auditLog.create({
+  async createAuditLog(data: CreateAuditLogInput, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.auditLog.create({
       data: {
         userId: data.userId ?? null,
         action: data.action,

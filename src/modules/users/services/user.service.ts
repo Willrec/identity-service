@@ -1,4 +1,5 @@
 import type { IUserRepository } from '../repositories/user.repository.interface.js';
+import type { Prisma } from '@prisma/client';
 import type { UserResponseDto, CreateUserDto, UpdateUserDto } from '../dto/user.dto.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 
@@ -27,29 +28,29 @@ export class UserService {
    * Validates uniqueness, then creates the user record.
    * Password must already be hashed by the caller (PasswordService).
    */
-  async createUser(dto: CreateUserDto): Promise<UserResponseDto> {
+  async createUser(dto: CreateUserDto, tx?: Prisma.TransactionClient): Promise<UserResponseDto> {
     const normalizedEmail = dto.email.toLowerCase();
-    const existing = await this.userRepo.findByEmail(normalizedEmail);
+    const existing = await this.userRepo.findByEmail(normalizedEmail, tx);
     if (existing) throw HttpError.BadRequest('Email already registered', 'EMAIL_TAKEN');
-    return this.userRepo.create({ ...dto, email: normalizedEmail });
+    return this.userRepo.create({ ...dto, email: normalizedEmail }, tx);
   }
 
-  async update(id: string, data: UpdateUserDto): Promise<UserResponseDto> {
+  async update(id: string, data: UpdateUserDto, tx?: Prisma.TransactionClient): Promise<UserResponseDto> {
     await this.getById(id);
-    return this.userRepo.update(id, data);
+    return this.userRepo.update(id, data, tx);
   }
 
-  async markAsDeleted(id: string): Promise<void> {
+  async markAsDeleted(id: string, tx?: Prisma.TransactionClient): Promise<void> {
     await this.getById(id);
-    await this.userRepo.markAsDeleted(id);
+    await this.userRepo.markAsDeleted(id, tx);
   }
 
-  async markEmailVerified(id: string): Promise<void> {
-    await this.userRepo.markEmailVerified(id);
+  async markEmailVerified(id: string, tx?: Prisma.TransactionClient): Promise<void> {
+    await this.userRepo.markEmailVerified(id, tx);
   }
 
-  async assignRole(userId: string, roleName: string): Promise<void> {
-    await this.userRepo.assignRole(userId, roleName);
+  async assignRole(userId: string, roleName: string, tx?: Prisma.TransactionClient): Promise<void> {
+    await this.userRepo.assignRole(userId, roleName, tx);
   }
 
   /** Temporary — delegates to repository for health check vertical slice */

@@ -1,4 +1,5 @@
 import type { IAuthRepository } from '../repositories/auth.repository.interface.js';
+import { prisma } from '../../../infrastructure/database/prisma.js';
 import type {
   RegisterDto,
   RegisterResponseDto,
@@ -28,25 +29,27 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<RegisterResponseDto> {
     const passwordHash = await this.passwordService.hash(dto.password);
 
-    // createUser checks email uniqueness and throws EMAIL_TAKEN if duplicate
-    const user = await this.userService.createUser({
-      email: dto.email,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      passwordHash,
+    return prisma.$transaction(async (tx) => {
+      // createUser checks email uniqueness and throws EMAIL_TAKEN if duplicate
+      const user = await this.userService.createUser({
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        passwordHash,
+      }, tx);
+
+      // Assign default USER role (non-fatal if not yet seeded)
+      await this.userService.assignRole(user.id, 'USER', tx);
+
+      // Append-only audit trail
+      await this.authRepo.createAuditLog({
+        userId: user.id,
+        action: 'USER_CREATED',
+        metadata: { email: user.email },
+      }, tx);
+
+      return { id: user.id, email: user.email, status: user.status };
     });
-
-    // Assign default USER role (non-fatal if not yet seeded)
-    await this.userService.assignRole(user.id, 'USER');
-
-    // Append-only audit trail
-    await this.authRepo.createAuditLog({
-      userId: user.id,
-      action: 'USER_CREATED',
-      metadata: { email: user.email },
-    });
-
-    return { id: user.id, email: user.email, status: user.status };
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────

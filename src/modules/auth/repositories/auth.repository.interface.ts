@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client';
+
 export interface SessionData {
   id: string;
   userId: string;
@@ -87,5 +89,5 @@ export interface IAuthRepository {
   deleteAllUserPasswordResetTokens(userId: string): Promise<void>;
 
   // Audit log
-  createAuditLog(data: CreateAuditLogInput): Promise<void>;
+  createAuditLog(data: CreateAuditLogInput, tx?: Prisma.TransactionClient): Promise<void>;
 }
