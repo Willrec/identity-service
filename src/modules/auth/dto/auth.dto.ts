@@ -58,6 +58,12 @@ export interface RegisterResponseDto {
   status: UserStatus;
 }
 
+export interface LoginResponseDto {
+  id: string;
+  email: string;
+  status: UserStatus;
+}
+
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 export interface DeviceInfoDto {

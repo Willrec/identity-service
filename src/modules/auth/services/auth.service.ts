@@ -4,6 +4,7 @@ import type {
   RegisterDto,
   RegisterResponseDto,
   LoginDto,
+  LoginResponseDto,
   AuthResponseDto,
   AuthTokensDto,
   DeviceInfoDto,
@@ -54,21 +55,22 @@ export class AuthService {
 
   // ── Login ──────────────────────────────────────────────────────────────────
 
-  async login(dto: LoginDto): Promise<AuthResponseDto> {
+  async login(dto: LoginDto): Promise<LoginResponseDto> {
     const record = await this.userService.findByEmailWithPassword(dto.email);
     if (!record) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
-    if (record.status === 'DELETED') throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
-    if (record.status === 'SUSPENDED') throw HttpError.Forbidden('Account suspended', 'ACCOUNT_SUSPENDED');
-    if (!record.passwordHash) throw HttpError.Unauthorized('Use OAuth to sign in', 'OAUTH_ONLY');
+    if (record.status !== 'ACTIVE') throw HttpError.Forbidden('Account suspended', 'ACCOUNT_SUSPENDED');
+    if (!record.passwordHash) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
 
     const valid = await this.passwordService.verify(dto.password, record.passwordHash);
     if (!valid) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
 
-    const { passwordHash: _ph, ...user } = record;
-    void _ph;
+    await this.authRepo.createAuditLog({
+      userId: record.id,
+      action: 'LOGIN_SUCCESS',
+      metadata: { email: record.email },
+    });
 
-    const tokens = await this.issueTokenPair(user.id, user.email, dto.deviceInfo);
-    return { user, tokens };
+    return { id: record.id, email: record.email, status: record.status };
   }
 
   // ── Refresh ────────────────────────────────────────────────────────────────
