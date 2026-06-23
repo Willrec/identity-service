@@ -59,9 +59,12 @@ export interface RegisterResponseDto {
 }
 
 export interface LoginResponseDto {
-  id: string;
-  email: string;
-  status: UserStatus;
+  user: {
+    id: string;
+    email: string;
+    status: UserStatus;
+  };
+  accessToken: string;
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────

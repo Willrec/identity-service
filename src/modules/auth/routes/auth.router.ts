@@ -6,6 +6,7 @@ import { AuthService } from '../services/auth.service.js';
 import { UserService } from '../../users/services/user.service.js';
 import { PasswordService } from '../services/password.service.js';
 import { TokenService } from '../services/token.service.js';
+import { TokenService as JwtTokenService } from '../../../infrastructure/security/jwt.js';
 import { SessionService } from '../services/session.service.js';
 import { AuthRepository } from '../repositories/auth.repository.js';
 import { UserRepository } from '../../users/repositories/user.repository.js';
@@ -18,13 +19,15 @@ const passwordService = new PasswordService();
 const tokenService = new TokenService(authRepo);
 const sessionService = new SessionService(authRepo);
 const userService = new UserService(userRepo);
+const jwtTokenService = new JwtTokenService();
 
 const authService = new AuthService(
   authRepo,
   userService,
   passwordService,
   tokenService,
-  sessionService
+  sessionService,
+  jwtTokenService
 );
 
 const authController = new AuthController(authService);

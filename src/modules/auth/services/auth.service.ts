@@ -11,6 +11,7 @@ import type {
 } from '../dto/auth.dto.js';
 import type { UserService } from '../../users/services/user.service.js';
 import type { TokenService } from './token.service.js';
+import { TokenService as JwtTokenService } from '../../../infrastructure/security/jwt.js';
 import type { PasswordService } from './password.service.js';
 import type { SessionService } from './session.service.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
@@ -23,6 +24,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
+    private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
   ) {}
 
   // ── Register ───────────────────────────────────────────────────────────────
@@ -70,7 +72,16 @@ export class AuthService {
       metadata: { email: record.email },
     });
 
-    return { id: record.id, email: record.email, status: record.status };
+    const accessToken = this.jwtTokenService.signAccessToken({
+      id: record.id,
+      email: record.email,
+      status: record.status,
+    });
+
+    return {
+      user: { id: record.id, email: record.email, status: record.status },
+      accessToken,
+    };
   }
 
   // ── Refresh ────────────────────────────────────────────────────────────────
