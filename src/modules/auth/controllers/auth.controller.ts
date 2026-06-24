@@ -60,4 +60,19 @@ export class AuthController {
       next(error);
     }
   };
+
+  logout = async (
+    req: Request<unknown, unknown, RefreshTokenDto>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await this.authService.logout(req.body.refreshToken);
+      res.status(200).json({
+        success: true,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

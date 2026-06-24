@@ -38,5 +38,6 @@ const router: IRouter = Router();
 router.post('/register', validateRequest(registerSchema), authController.register);
 router.post('/login', validateRequest(loginSchema), authController.login);
 router.post('/refresh', validateRequest(refreshTokenSchema), authController.refresh);
+router.post('/logout', validateRequest(refreshTokenSchema), authController.logout);
 
 export { router as authRouter };

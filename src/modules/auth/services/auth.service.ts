@@ -137,7 +137,13 @@ export class AuthService {
     if (!stored) return; // idempotent
 
     await this.authRepo.revokeRefreshToken(stored.id);
+    await this.authRepo.revokeAllSessionRefreshTokens(stored.sessionId);
     await this.sessionService.revoke(stored.sessionId);
+
+    await this.authRepo.createAuditLog({
+      userId: stored.userId,
+      action: 'LOGOUT',
+    });
   }
 
   async logoutAll(userId: string): Promise<void> {
