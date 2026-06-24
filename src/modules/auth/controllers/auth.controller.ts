@@ -3,7 +3,7 @@ import type { AuthService } from '../services/auth.service.js';
 import type { RegisterDto, LoginDto } from '../dto/auth.dto.js';
 
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   register = async (
     req: Request<unknown, unknown, RegisterDto>,
@@ -26,7 +26,16 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const result = await this.authService.login(req.body);
+      // Gather device info for session creation
+      const dto = {
+        ...req.body,
+        deviceInfo: req.body.deviceInfo ?? {
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      };
+      
+      const result = await this.authService.login(dto);
       res.status(200).json({
         success: true,
         data: result,

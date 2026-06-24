@@ -25,7 +25,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
-  ) {}
+  ) { }
 
   // ── Register ───────────────────────────────────────────────────────────────
 
@@ -65,6 +65,9 @@ export class AuthService {
 
     const valid = await this.passwordService.verify(dto.password, record.passwordHash);
     if (!valid) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
+
+    // Create session (restored)
+    await this.sessionService.create(record.id, dto.deviceInfo);
 
     await this.authRepo.createAuditLog({
       userId: record.id,
