@@ -146,6 +146,20 @@ export class AuthService {
     });
   }
 
+  async getMe(userId: string): Promise<UserResponseDto> {
+    const user = await this.userService.getRawById(userId);
+    if (!user) {
+      throw HttpError.NotFound('User not found', 'USER_NOT_FOUND');
+    }
+    if (user.status === 'DELETED') {
+      throw HttpError.Forbidden('User deleted', 'USER_DELETED');
+    }
+    if (user.status === 'SUSPENDED') {
+      throw HttpError.Forbidden('User suspended', 'USER_SUSPENDED');
+    }
+    return user;
+  }
+
   async logoutAll(userId: string): Promise<void> {
     await this.sessionService.revokeAll(userId);
   }

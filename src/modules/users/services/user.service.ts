@@ -14,6 +14,10 @@ export class UserService {
     return user;
   }
 
+  async getRawById(id: string): Promise<UserResponseDto | null> {
+    return this.userRepo.findById(id);
+  }
+
   async getByEmail(email: string): Promise<UserResponseDto | null> {
     return this.userRepo.findByEmail(email.toLowerCase());
   }

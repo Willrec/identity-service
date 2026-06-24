@@ -75,4 +75,21 @@ export class AuthController {
       next(error);
     }
   };
+
+  me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw HttpError.Unauthorized('Unauthorized', 'UNAUTHORIZED');
+      }
+
+      const result = await this.authService.getMe(userId);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
