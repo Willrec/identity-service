@@ -93,7 +93,7 @@ export class AuthService {
 
   // ── Refresh ────────────────────────────────────────────────────────────────
 
-  async refresh(rawToken: string): Promise<AuthTokensDto> {
+  async refresh(rawToken: string): Promise<Omit<AuthTokensDto, 'expiresIn'>> {
     const stored = await this.tokenService.findRefreshToken(rawToken);
     if (!stored || stored.revoked || stored.expiresAt < new Date()) {
       throw HttpError.Unauthorized('Invalid or expired refresh token', 'INVALID_REFRESH_TOKEN');
@@ -112,8 +112,22 @@ export class AuthService {
     const newRefreshToken = await this.tokenService.rotateRefreshToken(stored.id, user.id, session.id);
     await this.sessionService.touch(session.id);
 
-    const accessToken = this.tokenService.signAccessToken({ sub: user.id, email: user.email });
-    return this.tokenService.buildTokensResponse(accessToken, newRefreshToken);
+    const accessToken = this.jwtTokenService.signAccessToken({
+      id: user.id,
+      email: user.email,
+      status: user.status,
+    });
+
+    await this.authRepo.createAuditLog({
+      userId: user.id,
+      action: 'TOKEN_REFRESH',
+      metadata: { email: user.email },
+    });
+
+    return {
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
   }
 
   // ── Logout ─────────────────────────────────────────────────────────────────

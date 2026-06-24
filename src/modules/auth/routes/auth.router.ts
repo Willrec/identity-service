@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
 import { validateRequest } from '../../../middleware/validate.js';
-import { registerSchema, loginSchema } from '../validators/auth.validator.js';
+import { registerSchema, loginSchema, refreshTokenSchema } from '../validators/auth.validator.js';
 import { AuthService } from '../services/auth.service.js';
 import { UserService } from '../../users/services/user.service.js';
 import { PasswordService } from '../services/password.service.js';
@@ -37,5 +37,6 @@ const router: IRouter = Router();
 // Routes
 router.post('/register', validateRequest(registerSchema), authController.register);
 router.post('/login', validateRequest(loginSchema), authController.login);
+router.post('/refresh', validateRequest(refreshTokenSchema), authController.refresh);
 
 export { router as authRouter };

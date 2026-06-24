@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../services/auth.service.js';
-import type { RegisterDto, LoginDto } from '../dto/auth.dto.js';
+import type { RegisterDto, LoginDto, RefreshTokenDto } from '../dto/auth.dto.js';
 
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
@@ -36,6 +36,22 @@ export class AuthController {
       };
       
       const result = await this.authService.login(dto);
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  refresh = async (
+    req: Request<unknown, unknown, RefreshTokenDto>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const result = await this.authService.refresh(req.body.refreshToken);
       res.status(200).json({
         success: true,
         data: result,
