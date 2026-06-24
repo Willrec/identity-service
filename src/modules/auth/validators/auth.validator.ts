@@ -41,6 +41,10 @@ export const verifyEmailSchema = z.object({
   token: z.string().min(1),
 });
 
+export const resendVerificationEmailSchema = z.object({
+  email: z.string().email().toLowerCase(),
+});
+
 // Inferred types (use as parse output, NOT as DTO)
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -49,3 +53,4 @@ export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+export type ResendVerificationEmailInput = z.infer<typeof resendVerificationEmailSchema>;

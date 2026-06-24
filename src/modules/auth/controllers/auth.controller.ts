@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../services/auth.service.js';
-import type { RegisterDto, LoginDto, RefreshTokenDto } from '../dto/auth.dto.js';
+import type { RegisterDto, LoginDto, RefreshTokenDto, VerifyEmailDto, ResendVerificationEmailDto } from '../dto/auth.dto.js';
+import { HttpError } from '../../../shared/errors/HttpError.js';
 
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
@@ -87,6 +88,36 @@ export class AuthController {
       res.status(200).json({
         success: true,
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifyEmail = async (
+    req: Request<unknown, unknown, VerifyEmailDto>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await this.authService.verifyEmail(req.body.token);
+      res.status(200).json({
+        success: true,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resendVerification = async (
+    req: Request<unknown, unknown, ResendVerificationEmailDto>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await this.authService.resendVerificationEmail(req.body.email);
+      res.status(200).json({
+        success: true,
       });
     } catch (error) {
       next(error);

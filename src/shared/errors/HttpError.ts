@@ -13,6 +13,9 @@ export const HttpError = {
   NotFound: (message = 'Not Found', code = 'NOT_FOUND') =>
     new AppError(message, 404, code),
 
+  Conflict: (message = 'Conflict', code = 'CONFLICT') =>
+    new AppError(message, 409, code),
+
   InternalServer: (message = 'Internal Server Error', code = 'INTERNAL_SERVER_ERROR') =>
     new AppError(message, 500, code, false),
 } as const;

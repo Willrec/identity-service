@@ -16,6 +16,7 @@ import type { PasswordService } from './password.service.js';
 import type { SessionService } from './session.service.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 import { EMAIL_VERIFY_TOKEN_TTL_S, RESET_TOKEN_TTL_S } from '../../../config/constants.js';
+import type { INotificationService } from '../../notifications/services/notification.service.js';
 
 export class AuthService {
   constructor(
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
+    private readonly notificationService: INotificationService,
     private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
   ) { }
 
@@ -32,7 +34,7 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<RegisterResponseDto> {
     const passwordHash = await this.passwordService.hash(dto.password);
 
-    return prisma.$transaction(async (tx) => {
+    const user = await prisma.$transaction(async (tx) => {
       // createUser checks email uniqueness and throws EMAIL_TAKEN if duplicate
       const user = await this.userService.createUser({
         email: dto.email,
@@ -51,8 +53,15 @@ export class AuthService {
         metadata: { email: user.email },
       }, tx);
 
-      return { id: user.id, email: user.email, status: user.status };
+      return user;
     });
+
+    if (!user.emailVerified) {
+      const token = await this.issueEmailVerificationToken(user.id);
+      await this.notificationService.sendVerificationEmail({ id: user.id, email: user.email }, token);
+    }
+
+    return { id: user.id, email: user.email, status: user.status };
   }
 
   // ── Login ──────────────────────────────────────────────────────────────────
@@ -61,6 +70,7 @@ export class AuthService {
     const record = await this.userService.findByEmailWithPassword(dto.email);
     if (!record) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
     if (record.status !== 'ACTIVE') throw HttpError.Forbidden('Account suspended', 'ACCOUNT_SUSPENDED');
+    if (!record.emailVerified) throw HttpError.Forbidden('Email not verified', 'EMAIL_NOT_VERIFIED');
     if (!record.passwordHash) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
 
     const valid = await this.passwordService.verify(dto.password, record.passwordHash);
@@ -184,8 +194,31 @@ export class AuthService {
     if (!record || record.expiresAt < new Date()) {
       throw HttpError.BadRequest('Invalid or expired token', 'INVALID_VERIFICATION_TOKEN');
     }
+
+    const user = await this.userService.getRawById(record.userId);
+    if (user && user.emailVerified) {
+      throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
+    }
+
     await this.userService.markEmailVerified(record.userId);
     await this.authRepo.deleteEmailVerificationToken(record.id);
+
+    await this.authRepo.createAuditLog({
+      userId: record.userId,
+      action: 'EMAIL_VERIFIED',
+    });
+  }
+
+  async resendVerificationEmail(email: string): Promise<void> {
+    const user = await this.userService.getByEmail(email);
+    if (!user || user.status !== 'ACTIVE') return;
+
+    if (user.emailVerified) {
+      throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
+    }
+
+    const token = await this.issueEmailVerificationToken(user.id);
+    await this.notificationService.sendVerificationEmail({ id: user.id, email: user.email }, token);
   }
 
   // ── Password reset ─────────────────────────────────────────────────────────

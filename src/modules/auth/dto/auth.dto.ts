@@ -39,6 +39,10 @@ export interface VerifyEmailDto {
   token: string;
 }
 
+export interface ResendVerificationEmailDto {
+  email: string;
+}
+
 // ── Outputs ───────────────────────────────────────────────────────────────────
 
 export interface AuthTokensDto {
