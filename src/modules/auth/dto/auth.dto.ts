@@ -65,6 +65,7 @@ export interface LoginResponseDto {
     status: UserStatus;
   };
   accessToken: string;
+  refreshToken: string;
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────

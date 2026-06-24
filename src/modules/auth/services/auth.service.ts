@@ -67,7 +67,10 @@ export class AuthService {
     if (!valid) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
 
     // Create session (restored)
-    await this.sessionService.create(record.id, dto.deviceInfo);
+    const session = await this.sessionService.create(record.id, dto.deviceInfo);
+
+    // Issue refresh token
+    const refreshToken = await this.tokenService.issueRefreshToken(record.id, session.id);
 
     await this.authRepo.createAuditLog({
       userId: record.id,
@@ -84,6 +87,7 @@ export class AuthService {
     return {
       user: { id: record.id, email: record.email, status: record.status },
       accessToken,
+      refreshToken,
     };
   }
 

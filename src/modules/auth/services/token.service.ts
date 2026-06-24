@@ -16,7 +16,7 @@ export class TokenService {
   }
 
   generateOpaqueToken(): string {
-    return crypto.randomBytes(48).toString('hex');
+    return crypto.randomBytes(64).toString('hex');
   }
 
   fromNowSeconds(seconds: number): Date {
