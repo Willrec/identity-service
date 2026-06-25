@@ -56,10 +56,10 @@ export class TokenService {
       audience: this.audience,
     };
 
-    const decoded = jwt.verify(token, this.publicKey, options) as jwt.JwtPayload;
+    const decoded = jwt.verify(token, this.publicKey, options) as jwt.JwtPayload & TokenPayload;
 
     return {
-      sub: decoded.sub!,
+      sub: decoded.sub,
       email: decoded.email,
       status: decoded.status,
     };

@@ -23,18 +23,18 @@ async function start(): Promise<void> {
   });
 }
 
-async function shutdown(signal: string): Promise<void> {
+function shutdown(signal: string): void {
   logger.info({ signal }, 'Shutdown signal received');
 
-  httpServer.close(async () => {
-    try {
-      await disconnectDatabase();
-    } catch (err) {
-      logger.error({ err }, 'Error during database disconnect');
-    } finally {
-      logger.info('Server stopped cleanly');
-      process.exit(0);
-    }
+  httpServer.close(() => {
+    disconnectDatabase()
+      .catch((err) => {
+        logger.error({ err }, 'Error during database disconnect');
+      })
+      .finally(() => {
+        logger.info('Server stopped cleanly');
+        process.exit(0);
+      });
   });
 
   // Force exit if graceful shutdown takes too long

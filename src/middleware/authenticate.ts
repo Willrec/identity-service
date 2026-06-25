@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '../shared/errors/AppError.js';
 import { HttpError } from '../shared/errors/HttpError.js';
@@ -42,11 +43,12 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     };
 
     next();
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof AppError) {
       next(error);
     } else {
-      next(HttpError.Unauthorized(error.message || 'Invalid token', 'INVALID_TOKEN'));
+      const errorMessage = error instanceof Error ? error.message : 'Invalid token';
+      next(HttpError.Unauthorized(errorMessage, 'INVALID_TOKEN'));
     }
   }
 };

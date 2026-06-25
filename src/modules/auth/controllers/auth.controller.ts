@@ -34,12 +34,12 @@ export class AuthController {
   ): Promise<void> => {
     try {
       // Gather device info for session creation
-      const dto = {
+      const dto: LoginDto = {
         ...req.body,
-        deviceInfo: req.body.deviceInfo ?? ({
+        deviceInfo: req.body.deviceInfo ?? {
           ip: req.ip,
           userAgent: req.get('User-Agent'),
-        } as any),
+        },
       };
       
       const result = await this.authService.login(dto);
@@ -66,8 +66,9 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const token = req.cookies[COOKIES.REFRESH];
-      if (!token) {
+      const cookies = (req.cookies || {}) as Record<string, unknown>;
+      const token = cookies[COOKIES.REFRESH];
+      if (!token || typeof token !== 'string') {
         throw HttpError.Unauthorized('Missing refresh token', 'INVALID_REFRESH_TOKEN');
       }
 
@@ -95,8 +96,9 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const token = req.cookies[COOKIES.REFRESH];
-      if (token) {
+      const cookies = (req.cookies || {}) as Record<string, unknown>;
+      const token = cookies[COOKIES.REFRESH];
+      if (typeof token === 'string') {
         await this.authService.logout(token);
       }
       res.setHeader('Cache-Control', 'no-store');

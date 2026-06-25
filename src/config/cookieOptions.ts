@@ -9,7 +9,7 @@ export const getRefreshCookieOptions = (): CookieOptions => ({
   path: '/',
   maxAge: REFRESH_TOKEN_TTL_S * 1000,
   priority: 'high',
-} as CookieOptions & { priority: 'high' });
+});
 
 export const getCSRFCookieOptions = (): CookieOptions => ({
   httpOnly: false,
@@ -18,4 +18,4 @@ export const getCSRFCookieOptions = (): CookieOptions => ({
   path: '/',
   maxAge: REFRESH_TOKEN_TTL_S * 1000,
   priority: 'high',
-} as CookieOptions & { priority: 'high' });
+});

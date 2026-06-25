@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import crypto from 'node:crypto';
 import { HttpError } from '../shared/errors/HttpError.js';
 import { COOKIES, HEADERS } from '../config/constants.js';
@@ -9,7 +9,8 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
     throw HttpError.Forbidden('Invalid CSRF token', 'INVALID_CSRF_TOKEN');
   }
 
-  const cookieToken = req.cookies[COOKIES.CSRF];
+  const cookies = (req.cookies || {}) as Record<string, unknown>;
+  const cookieToken = cookies[COOKIES.CSRF];
   if (!cookieToken || typeof cookieToken !== 'string') {
     throw HttpError.Forbidden('Invalid CSRF token', 'INVALID_CSRF_TOKEN');
   }

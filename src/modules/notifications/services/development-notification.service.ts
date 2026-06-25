@@ -3,11 +3,13 @@ import type { INotificationService } from './notification.service.js';
 import { logger } from '../../../shared/logger.js';
 
 export class DevelopmentNotificationService implements INotificationService {
-  async sendVerificationEmail(user: Pick<User, 'id' | 'email'>, token: string): Promise<void> {
+  sendVerificationEmail(user: Pick<User, 'id' | 'email'>, token: string): Promise<void> {
     logger.info(`[Development] Verification token for ${user.email}: ${token}`);
+    return Promise.resolve();
   }
 
-  async sendPasswordResetEmail(user: Pick<User, 'id' | 'email'>, token: string): Promise<void> {
+  sendPasswordResetEmail(user: Pick<User, 'id' | 'email'>, token: string): Promise<void> {
     logger.info(`[Development] Password reset token for ${user.email}: ${token}`);
+    return Promise.resolve();
   }
 }

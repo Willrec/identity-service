@@ -5,7 +5,6 @@ import type {
   RegisterResponseDto,
   LoginDto,
   LoginResponseDto,
-  AuthResponseDto,
   AuthTokensDto,
   DeviceInfoDto,
   ResetPasswordDto,
