@@ -63,6 +63,20 @@ A default `.env` will be copied from `.env.example`. Make sure to configure the 
 *   `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`: 2048-bit RS256 RSA keypair in PEM format (newlines escaped as literal `\n`).
 *   `JWT_ACCESS_TOKEN_EXPIRES_IN`: Expire duration for generated JWTs (e.g. `15m`).
 
+### JWT RS256 Key Generation
+
+The service uses asymmetric RS256 signatures for access tokens. You must generate a 2048-bit RSA key pair. Run the key generator script to automatically create these keys:
+
+```bash
+pnpm keys:generate
+```
+
+This generates `private.pem` (private key) and `public.pem` (public key) inside the `keys/` directory (automatically git-ignored).
+
+To use these keys in development:
+1. Copy the contents of the generated PEM files.
+2. In your `.env` file, assign the keys to `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY`, making sure to format them on a single line where all newlines are replaced by literal `\n` characters (as shown in `.env.example`).
+
 ### Installation
 
 Once environment variables are configured, install project dependencies and generate the database client:
