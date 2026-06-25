@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../services/auth.service.js';
 import type { TokenService } from '../services/token.service.js';
-import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationEmailDto, RequestPasswordResetDto, ResetPasswordDto } from '../dto/auth.dto.js';
+import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationEmailDto, RequestPasswordResetDto, ResetPasswordDto, DeviceInfoDto } from '../dto/auth.dto.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 import { COOKIES } from '../../../config/constants.js';
 import { getRefreshCookieOptions, getCSRFCookieOptions } from '../../../config/cookieOptions.js';
@@ -34,12 +34,14 @@ export class AuthController {
   ): Promise<void> => {
     try {
       // Gather device info for session creation
+      const defaultDeviceInfo: DeviceInfoDto = {};
+      if (req.ip !== undefined) defaultDeviceInfo.ip = req.ip;
+      const ua = req.get('User-Agent');
+      if (ua !== undefined) defaultDeviceInfo.userAgent = ua;
+
       const dto: LoginDto = {
         ...req.body,
-        deviceInfo: req.body.deviceInfo ?? {
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-        },
+        deviceInfo: req.body.deviceInfo ?? defaultDeviceInfo,
       };
       
       const result = await this.authService.login(dto);

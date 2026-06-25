@@ -19,7 +19,7 @@ declare global {
 
 const jwtTokenService = new JwtTokenService();
 
-export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticate = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -31,7 +31,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
       throw HttpError.Unauthorized('Invalid authorization header format', 'INVALID_TOKEN_FORMAT');
     }
 
-    const token = parts[1];
+    const token = parts[1]!;
     
     // Validates RS256 signature, issuer, audience, and expiration internally
     const payload = jwtTokenService.verifyAccessToken(token);

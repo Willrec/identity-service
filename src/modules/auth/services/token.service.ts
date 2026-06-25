@@ -30,7 +30,7 @@ export class TokenService {
   // ── JWT ────────────────────────────────────────────────────────────────────
 
   signAccessToken(payload: TokenPayload): string {
-    return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_TTL_S });
+    return jwt.sign(payload, env.JWT_ACCESS_SECRET ?? '', { expiresIn: ACCESS_TOKEN_TTL_S });
   }
 
   // ── Refresh tokens ─────────────────────────────────────────────────────────

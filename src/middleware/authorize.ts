@@ -3,7 +3,7 @@ import { HttpError } from '../shared/errors/HttpError.js';
 import { prisma } from '../infrastructure/database/prisma.js';
 
 export const authorize = (...roles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user || !req.user.id) {
         throw HttpError.Unauthorized('Not authenticated');

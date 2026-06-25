@@ -6,7 +6,6 @@ import type {
   LoginDto,
   LoginResponseDto,
   AuthTokensDto,
-  DeviceInfoDto,
   ResetPasswordDto,
 } from '../dto/auth.dto.js';
 import type { UserResponseDto } from '../../users/dto/user.dto.js';
@@ -274,18 +273,5 @@ export class AuthService {
       userId: record.userId,
       action: 'PASSWORD_RESET_COMPLETED',
     });
-  }
-
-  // ── Private ────────────────────────────────────────────────────────────────
-
-  private async issueTokenPair(
-    userId: string,
-    email: string,
-    deviceInfo?: DeviceInfoDto,
-  ): Promise<AuthTokensDto> {
-    const session = await this.sessionService.create(userId, deviceInfo);
-    const accessToken = this.tokenService.signAccessToken({ sub: userId, email });
-    const refreshToken = await this.tokenService.issueRefreshToken(userId, session.id);
-    return this.tokenService.buildTokensResponse(accessToken, refreshToken);
   }
 }
