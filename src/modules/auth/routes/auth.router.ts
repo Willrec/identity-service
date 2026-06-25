@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
 import { validateRequest } from '../../../middleware/validate.js';
-import { registerSchema, loginSchema, refreshTokenSchema, verifyEmailSchema, resendVerificationEmailSchema } from '../validators/auth.validator.js';
+import { registerSchema, loginSchema, refreshTokenSchema, verifyEmailSchema, resendVerificationEmailSchema, requestPasswordResetSchema } from '../validators/auth.validator.js';
 import { authenticate } from '../../../middleware/authenticate.js';
 import { AuthService } from '../services/auth.service.js';
 import { UserService } from '../../users/services/user.service.js';
@@ -45,6 +45,7 @@ router.post('/refresh', validateRequest(refreshTokenSchema), authController.refr
 router.post('/logout', validateRequest(refreshTokenSchema), authController.logout);
 router.post('/verify-email', validateRequest(verifyEmailSchema), authController.verifyEmail);
 router.post('/resend-verification', validateRequest(resendVerificationEmailSchema), authController.resendVerification);
+router.post('/forgot-password', validateRequest(requestPasswordResetSchema), authController.forgotPassword);
 router.get('/me', authenticate, authController.me);
 
 export { router as authRouter };

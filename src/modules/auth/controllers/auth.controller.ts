@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../services/auth.service.js';
-import type { RegisterDto, LoginDto, RefreshTokenDto, VerifyEmailDto, ResendVerificationEmailDto } from '../dto/auth.dto.js';
+import type { RegisterDto, LoginDto, RefreshTokenDto, VerifyEmailDto, ResendVerificationEmailDto, RequestPasswordResetDto } from '../dto/auth.dto.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 
 export class AuthController {
@@ -30,10 +30,10 @@ export class AuthController {
       // Gather device info for session creation
       const dto = {
         ...req.body,
-        deviceInfo: req.body.deviceInfo ?? {
+        deviceInfo: req.body.deviceInfo ?? ({
           ip: req.ip,
           userAgent: req.get('User-Agent'),
-        },
+        } as any),
       };
       
       const result = await this.authService.login(dto);
@@ -116,6 +116,21 @@ export class AuthController {
   ): Promise<void> => {
     try {
       await this.authService.resendVerificationEmail(req.body.email);
+      res.status(200).json({
+        success: true,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  forgotPassword = async (
+    req: Request<unknown, unknown, RequestPasswordResetDto>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      await this.authService.forgotPassword(req.body.email);
       res.status(200).json({
         success: true,
       });

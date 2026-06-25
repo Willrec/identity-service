@@ -99,6 +99,22 @@ async function runTests() {
   const resendRes2 = await requestAPI('POST', '/auth/resend-verification', { email: 'test_verify@example.com' });
   console.log(resendRes2.status === 200 ? '✓ Resend successful for unverified user (200)' : `✗ Failed (got ${resendRes2.status})`);
 
+  console.log('\n--- Forgot Password Test ---');
+  
+  console.log('\n[10] Forgot Password (Valid Verified Email)');
+  await prisma.user.update({ where: { email: 'test_verify@example.com' }, data: { emailVerified: true } });
+  const forgotRes1 = await requestAPI('POST', '/auth/forgot-password', { email: 'test_verify@example.com' });
+  console.log(forgotRes1.status === 200 ? '✓ Valid verified email returns 200' : `✗ Failed (got ${forgotRes1.status})`);
+
+  console.log('\n[11] Forgot Password (Unknown Email)');
+  const forgotRes2 = await requestAPI('POST', '/auth/forgot-password', { email: 'unknown@example.com' });
+  console.log(forgotRes2.status === 200 ? '✓ Unknown email returns 200' : `✗ Failed (got ${forgotRes2.status})`);
+
+  console.log('\n[12] Forgot Password (Unverified Email)');
+  await prisma.user.update({ where: { email: 'test_verify@example.com' }, data: { emailVerified: false } });
+  const forgotRes3 = await requestAPI('POST', '/auth/forgot-password', { email: 'test_verify@example.com' });
+  console.log(forgotRes3.status === 200 ? '✓ Unverified email returns 200' : `✗ Failed (got ${forgotRes3.status})`);
+
   await prisma.$disconnect();
 }
 

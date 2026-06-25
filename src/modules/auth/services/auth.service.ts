@@ -9,6 +9,7 @@ import type {
   AuthTokensDto,
   DeviceInfoDto,
 } from '../dto/auth.dto.js';
+import type { UserResponseDto } from '../../users/dto/user.dto.js';
 import type { UserService } from '../../users/services/user.service.js';
 import type { TokenService } from './token.service.js';
 import { TokenService as JwtTokenService } from '../../../infrastructure/security/jwt.js';
@@ -222,6 +223,21 @@ export class AuthService {
   }
 
   // ── Password reset ─────────────────────────────────────────────────────────
+
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.userService.getByEmail(email);
+    if (!user || user.status !== 'ACTIVE' || !user.emailVerified) return;
+
+    const token = await this.issuePasswordResetToken(email);
+    if (!token) return;
+
+    await this.notificationService.sendPasswordResetEmail({ id: user.id, email: user.email }, token);
+    
+    await this.authRepo.createAuditLog({
+      userId: user.id,
+      action: 'PASSWORD_RESET_REQUESTED',
+    });
+  }
 
   async issuePasswordResetToken(email: string): Promise<string | null> {
     const user = await this.userService.getByEmail(email);
