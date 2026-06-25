@@ -6,9 +6,12 @@ import { openApiSpec } from '../src/docs/openapi.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const outputPath = path.resolve(__dirname, '../src/docs/openapi.json');
+const outputPath = path.resolve(__dirname, '../docs/openapi/openapi.json');
 
 try {
+  // Ensure target directory exists
+  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+  
   fs.writeFileSync(outputPath, JSON.stringify(openApiSpec, null, 2), 'utf8');
   console.log(`Successfully generated static OpenAPI specification at: ${outputPath}`);
 } catch (error) {

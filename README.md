@@ -138,6 +138,34 @@ Si deseas controlar el flujo de pruebas manualmente o necesitas depurar un test 
 
 ---
 
+## OpenAPI
+
+La especificación OpenAPI 3.1 de este servicio actúa como la **única fuente de verdad** para documentar, validar y generar el SDK del cliente.
+
+### Comandos de OpenAPI
+
+* **Generar documentación y SDK (pauta completa)**
+  ```bash
+  pnpm openapi
+  ```
+
+* **Validar la especificación**
+  ```bash
+  pnpm openapi:validate
+  ```
+
+* **Generar tipos TypeScript y Hooks de React Query (SDK)**
+  ```bash
+  pnpm openapi:types
+  ```
+
+### Puntos de Acceso
+
+* **Swagger UI (Local)**: [http://localhost:3000/docs](http://localhost:3000/docs)
+* **Especificación Raw (JSON)**: [http://localhost:3000/docs/openapi.json](http://localhost:3000/docs/openapi.json)
+
+---
+
 ## Scripts Disponibles
 
 | Script | Descripción |
@@ -151,3 +179,8 @@ Si deseas controlar el flujo de pruebas manualmente o necesitas depurar un test 
 | `pnpm test` | Ejecuta las pruebas unitarias e integradas una sola vez con cobertura habilitada. |
 | `pnpm test:integration` | Ejecuta la generación de Prisma, validación de esquemas, migración y tests. |
 | `pnpm test:local` | Orquesta todo el entorno de pruebas Docker de principio a fin (Setup -> Test -> Cleanup). |
+| `pnpm openapi` | Ejecuta la validación, linting, bundling y la generación del SDK de Orval en secuencia. |
+| `pnpm openapi:validate` | Valida la especificación OpenAPI compilada en `docs/openapi/openapi.json` con Redocly. |
+| `pnpm openapi:lint` | Linter de Redocly para asegurar conformidad del contrato. |
+| `pnpm openapi:bundle` | Compila la especificación de TypeScript a JSON estático. |
+| `pnpm openapi:types` | Genera modelos de TypeScript y hooks de React Query mediante Orval en `generated/sdk/openapi.ts`. |
