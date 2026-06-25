@@ -71,8 +71,14 @@ export const createAdminUser = async (overrides?: any) => {
   if (userId) {
     await prisma.user.update({
       where: { id: userId },
-      data: { emailVerified: true, role: 'ADMIN' },
+      data: { emailVerified: true },
     });
+    const role = await prisma.role.upsert({
+      where: { name: 'ADMIN' },
+      update: {},
+      create: { name: 'ADMIN' },
+    });
+    await prisma.userRole.create({ data: { userId, roleId: role.id } });
   }
   return { res, payload };
 };
@@ -83,8 +89,14 @@ export const createSuperAdminUser = async (overrides?: any) => {
   if (userId) {
     await prisma.user.update({
       where: { id: userId },
-      data: { emailVerified: true, role: 'SUPER_ADMIN' },
+      data: { emailVerified: true },
     });
+    const role = await prisma.role.upsert({
+      where: { name: 'SUPER_ADMIN' },
+      update: {},
+      create: { name: 'SUPER_ADMIN' },
+    });
+    await prisma.userRole.create({ data: { userId, roleId: role.id } });
   }
   return { res, payload };
 };

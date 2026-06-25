@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { AppError } from '../shared/errors/AppError.js';
 import { HttpError } from '../shared/errors/HttpError.js';
 import { TokenService as JwtTokenService } from '../infrastructure/security/jwt.js';
 import type { UserStatus } from '../shared/types/domain.types.js';
@@ -42,7 +43,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
     next();
   } catch (error: any) {
-    if (error instanceof HttpError) {
+    if (error instanceof AppError) {
       next(error);
     } else {
       next(HttpError.Unauthorized(error.message || 'Invalid token', 'INVALID_TOKEN'));

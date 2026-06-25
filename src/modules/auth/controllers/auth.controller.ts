@@ -21,7 +21,7 @@ export class AuthController {
       const result = await this.authService.register(req.body);
       res.status(201).json({
         success: true,
-        data: result,
+        data: { user: result },
       });
     } catch (error) {
       next(error);

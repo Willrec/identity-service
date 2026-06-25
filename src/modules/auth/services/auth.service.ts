@@ -71,7 +71,9 @@ export class AuthService {
   async login(dto: LoginDto): Promise<LoginResponseDto> {
     const record = await this.userService.findByEmailWithPassword(dto.email);
     if (!record) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
-    if (record.status !== 'ACTIVE') throw HttpError.Forbidden('Account suspended', 'ACCOUNT_SUSPENDED');
+    if (record.status === 'SUSPENDED') throw HttpError.Forbidden('Account suspended', 'ACCOUNT_SUSPENDED');
+    if (record.status === 'DELETED') throw HttpError.Forbidden('Account deleted', 'ACCOUNT_DELETED');
+    if (record.status !== 'ACTIVE') throw HttpError.Forbidden('Account inactive', 'ACCOUNT_INACTIVE');
     if (!record.emailVerified) throw HttpError.Forbidden('Email not verified', 'EMAIL_NOT_VERIFIED');
     if (!record.passwordHash) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
 
@@ -164,10 +166,10 @@ export class AuthService {
       throw HttpError.NotFound('User not found', 'USER_NOT_FOUND');
     }
     if (user.status === 'DELETED') {
-      throw HttpError.Forbidden('User deleted', 'USER_DELETED');
+      throw HttpError.Forbidden('User deleted', 'ACCOUNT_DELETED');
     }
     if (user.status === 'SUSPENDED') {
-      throw HttpError.Forbidden('User suspended', 'USER_SUSPENDED');
+      throw HttpError.Forbidden('User suspended', 'ACCOUNT_SUSPENDED');
     }
     return user;
   }

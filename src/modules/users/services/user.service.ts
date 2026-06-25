@@ -35,7 +35,7 @@ export class UserService {
   async createUser(dto: CreateUserDto, tx?: Prisma.TransactionClient): Promise<UserResponseDto> {
     const normalizedEmail = dto.email.toLowerCase();
     const existing = await this.userRepo.findByEmail(normalizedEmail, tx);
-    if (existing) throw HttpError.BadRequest('Email already registered', 'EMAIL_TAKEN');
+    if (existing) throw HttpError.Conflict('Email already registered', 'EMAIL_EXISTS');
     return this.userRepo.create({ ...dto, email: normalizedEmail }, tx);
   }
 
