@@ -34,7 +34,7 @@ export class TokenService {
     const options: SignOptions = {
       algorithm: 'RS256',
       subject: user.id,
-      expiresIn: env.JWT_ACCESS_TOKEN_EXPIRES_IN as any,
+      expiresIn: env.JWT_ACCESS_TOKEN_EXPIRES_IN as Exclude<SignOptions['expiresIn'], undefined>,
       issuer: this.issuer,
       audience: this.audience,
     };
