@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+  integration:
+    name: Integration Tests
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elevo_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/elevo_test_db?schema=auth
+      JWT_ACCESS_TOKEN_EXPIRES_IN: 15m
+      BCRYPT_SALT_ROUNDS: 10
+      CORS_ORIGINS: http://localhost:3000
+      RATE_LIMIT_LOGIN: 1000
+      RATE_LIMIT_REGISTER: 1000
+      RATE_LIMIT_REFRESH: 1000
+      RATE_LIMIT_LOGOUT: 1000
+      RATE_LIMIT_FORGOT_PASSWORD: 1000
+      RATE_LIMIT_RESET_PASSWORD: 1000
+      RATE_LIMIT_VERIFY_EMAIL: 1000
+      RATE_LIMIT_RESEND_VERIFICATION: 1000
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for PostgreSQL
+        run: |
+          timeout=60
+          elapsed=0
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "PostgreSQL did not become ready within ${timeout}s"
+              exit 1
+            fi
+            sleep 2
+            elapsed=$((elapsed + 2))
+          done
+          echo "PostgreSQL is ready (${elapsed}s)"
+
+      - name: Generate test RSA keypair
+        run: |
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out private.pem
+          openssl rsa -pubout -in private.pem -out public.pem
+          echo "JWT_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
+          cat private.pem >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          echo "JWT_PUBLIC_KEY<<EOF" >> $GITHUB_ENV
+          cat public.pem >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          rm private.pem public.pem
+
+      - name: Run integration tests
+        run: pnpm test:integration
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
