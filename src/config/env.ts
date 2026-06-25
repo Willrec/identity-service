@@ -19,6 +19,14 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32).optional(),
   JWT_REFRESH_SECRET: z.string().min(32).optional(),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15),
+  RATE_LIMIT_LOGIN: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_REGISTER: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_REFRESH: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_LOGOUT: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_FORGOT_PASSWORD: z.coerce.number().int().positive().default(3),
+  RATE_LIMIT_RESET_PASSWORD: z.coerce.number().int().positive().default(5),
+  RATE_LIMIT_VERIFY_EMAIL: z.coerce.number().int().positive().default(10),
+  RATE_LIMIT_RESEND_VERIFICATION: z.coerce.number().int().positive().default(3),
 });
 
 const parsed = envSchema.safeParse(process.env);
