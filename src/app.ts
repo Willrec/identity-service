@@ -9,6 +9,7 @@ import { requestId } from './middleware/requestId.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { router } from './routes/index.js';
+import { openApiRouter } from './docs/openapi.js';
 import { testRouter } from './modules/auth/routes/test.router.js';
 import { logger } from './shared/logger.js';
 
@@ -39,6 +40,12 @@ export function createApp(): express.Application {
     logger.info({ method: req.method, url: req.url, requestId: req.id }, 'Incoming request');
     next();
   });
+
+  // Docs — Swagger UI (/docs) and raw spec (/docs/openapi.json)
+  // Disabled in production to avoid leaking the API surface.
+  if (env.NODE_ENV !== 'production') {
+    app.use(openApiRouter);
+  }
 
   // Routes
   app.use(API_PREFIX, router);
