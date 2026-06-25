@@ -73,6 +73,9 @@ const components: OpenAPIV3_1.Document['components'] = {
           example: true,
         },
       },
+      example: {
+        success: true,
+      },
     },
 
     // ── Enums ──────────────────────────────────────────────────────────────────
@@ -107,13 +110,13 @@ const components: OpenAPIV3_1.Document['components'] = {
           type: 'string',
           format: 'uuid',
           description: 'Unique user identifier (UUIDv7).',
-          example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+          example: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
         },
         email: {
           type: 'string',
           format: 'email',
           description: "User's registered email address.",
-          example: 'john.doe@example.com',
+          example: 'john@example.com',
         },
         firstName: {
           type: 'string',
@@ -162,7 +165,7 @@ const components: OpenAPIV3_1.Document['components'] = {
           type: 'string',
           format: 'email',
           description: 'Email address to register. Stored in lowercase.',
-          example: 'john.doe@example.com',
+          example: 'john@example.com',
         },
         password: {
           type: 'string',
@@ -171,7 +174,7 @@ const components: OpenAPIV3_1.Document['components'] = {
           description:
             'Must contain at least one uppercase letter and one digit. ' +
             'Max 72 chars (bcrypt limit).',
-          example: 'Str0ngP@ss',
+          example: 'Password123!',
         },
         firstName: {
           type: 'string',
@@ -189,8 +192,8 @@ const components: OpenAPIV3_1.Document['components'] = {
         },
       },
       example: {
-        email: 'john.doe@example.com',
-        password: 'Str0ngP@ss',
+        email: 'john@example.com',
+        password: 'Password123!',
         firstName: 'John',
         lastName: 'Doe',
       },
@@ -205,18 +208,18 @@ const components: OpenAPIV3_1.Document['components'] = {
           type: 'string',
           format: 'email',
           description: 'Registered email address.',
-          example: 'john.doe@example.com',
+          example: 'john@example.com',
         },
         password: {
           type: 'string',
           minLength: 1,
           description: 'Account password.',
-          example: 'Str0ngP@ss',
+          example: 'Password123!',
         },
       },
       example: {
-        email: 'john.doe@example.com',
-        password: 'Str0ngP@ss',
+        email: 'john@example.com',
+        password: 'Password123!',
       },
     },
 
@@ -229,10 +232,12 @@ const components: OpenAPIV3_1.Document['components'] = {
           type: 'string',
           format: 'email',
           description: 'Email of the account to send the password-reset link to.',
-          example: 'john.doe@example.com',
+          example: 'john@example.com',
         },
       },
-      example: { email: 'john.doe@example.com' },
+      example: {
+        email: 'john@example.com',
+      },
     },
 
     /** Mirrors resetPasswordSchema (auth.validator.ts) */
@@ -244,7 +249,7 @@ const components: OpenAPIV3_1.Document['components'] = {
           type: 'string',
           minLength: 1,
           description: 'Opaque reset token received via email link.',
-          example: 'eyJhbGciOiJIUzI1NiJ9.reset.token',
+          example: 'reset-token',
         },
         newPassword: {
           type: 'string',
@@ -253,12 +258,12 @@ const components: OpenAPIV3_1.Document['components'] = {
           description:
             'Must contain at least one uppercase letter and one digit. ' +
             'Max 72 chars (bcrypt limit).',
-          example: 'NewStr0ng!',
+          example: 'NewPassword123!',
         },
       },
       example: {
-        token: 'eyJhbGciOiJIUzI1NiJ9.reset.token',
-        newPassword: 'NewStr0ng!',
+        token: 'reset-token',
+        newPassword: 'NewPassword123!',
       },
     },
 
@@ -271,10 +276,12 @@ const components: OpenAPIV3_1.Document['components'] = {
           type: 'string',
           minLength: 1,
           description: 'Opaque verification token received via email link.',
-          example: 'eyJhbGciOiJIUzI1NiJ9.verify.token',
+          example: 'verification-token',
         },
       },
-      example: { token: 'eyJhbGciOiJIUzI1NiJ9.verify.token' },
+      example: {
+        token: 'verification-token',
+      },
     },
 
     // ── Response schemas ───────────────────────────────────────────────────────
@@ -300,13 +307,13 @@ const components: OpenAPIV3_1.Document['components'] = {
                   type: 'string',
                   format: 'uuid',
                   description: 'Unique user identifier (UUIDv7).',
-                  example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+                  example: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
                 },
                 email: {
                   type: 'string',
                   format: 'email',
                   description: "User's registered email address.",
-                  example: 'john.doe@example.com',
+                  example: 'john@example.com',
                 },
                 status: { $ref: '#/components/schemas/UserStatus' },
               },
@@ -318,8 +325,8 @@ const components: OpenAPIV3_1.Document['components'] = {
         success: true,
         data: {
           user: {
-            id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
-            email: 'john.doe@example.com',
+            id: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
+            email: 'john@example.com',
             status: 'ACTIVE',
           },
         },
@@ -350,13 +357,13 @@ const components: OpenAPIV3_1.Document['components'] = {
                   type: 'string',
                   format: 'uuid',
                   description: 'Unique user identifier (UUIDv7).',
-                  example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+                  example: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
                 },
                 email: {
                   type: 'string',
                   format: 'email',
                   description: "User's registered email address.",
-                  example: 'john.doe@example.com',
+                  example: 'john@example.com',
                 },
                 status: { $ref: '#/components/schemas/UserStatus' },
               },
@@ -364,7 +371,7 @@ const components: OpenAPIV3_1.Document['components'] = {
             accessToken: {
               type: 'string',
               description: 'JWT access token signed with RS256. Valid for 15 minutes.',
-              example: 'eyJhbGciOiJSUzI1NiJ9.login.token',
+              example: '<jwt>',
             },
           },
         },
@@ -373,11 +380,11 @@ const components: OpenAPIV3_1.Document['components'] = {
         success: true,
         data: {
           user: {
-            id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
-            email: 'john.doe@example.com',
+            id: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
+            email: 'john@example.com',
             status: 'ACTIVE',
           },
-          accessToken: 'eyJhbGciOiJSUzI1NiJ9.login.token',
+          accessToken: '<jwt>',
         },
       },
     },
@@ -406,13 +413,13 @@ const components: OpenAPIV3_1.Document['components'] = {
                   type: 'string',
                   format: 'uuid',
                   description: 'Unique user identifier (UUIDv7).',
-                  example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+                  example: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
                 },
                 email: {
                   type: 'string',
                   format: 'email',
                   description: "User's registered email address.",
-                  example: 'john.doe@example.com',
+                  example: 'john@example.com',
                 },
                 status: { $ref: '#/components/schemas/UserStatus' },
               },
@@ -420,7 +427,7 @@ const components: OpenAPIV3_1.Document['components'] = {
             accessToken: {
               type: 'string',
               description: 'Newly issued JWT access token signed with RS256. Valid for 15 minutes.',
-              example: 'eyJhbGciOiJSUzI1NiJ9.refresh.token',
+              example: '<jwt>',
             },
           },
         },
@@ -429,11 +436,11 @@ const components: OpenAPIV3_1.Document['components'] = {
         success: true,
         data: {
           user: {
-            id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
-            email: 'john.doe@example.com',
+            id: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
+            email: 'john@example.com',
             status: 'ACTIVE',
           },
-          accessToken: 'eyJhbGciOiJSUzI1NiJ9.refresh.token',
+          accessToken: '<jwt>',
         },
       },
     },
@@ -447,11 +454,11 @@ const components: OpenAPIV3_1.Document['components'] = {
           type: 'string',
           format: 'email',
           description: 'Registered email address to resend verification link.',
-          example: 'john.doe@example.com',
+          example: 'john@example.com',
         },
       },
       example: {
-        email: 'john.doe@example.com',
+        email: 'john@example.com',
       },
     },
 
@@ -469,8 +476,8 @@ const components: OpenAPIV3_1.Document['components'] = {
       example: {
         success: true,
         data: {
-          id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
-          email: 'john.doe@example.com',
+          id: '0f3d2c4b-2d78-4b89-b20b-4dbe7c8472d8',
+          email: 'john@example.com',
           firstName: 'John',
           lastName: 'Doe',
           avatarUrl: null,
@@ -566,6 +573,22 @@ const components: OpenAPIV3_1.Document['components'] = {
         },
       },
     },
+    InternalServerError: {
+      description: 'An unexpected internal server error occurred.',
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ErrorResponse' },
+          example: {
+            success: false,
+            error: {
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Internal Server Error',
+              requestId: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            },
+          },
+        },
+      },
+    },
   },
 
   // ── Reusable parameters ────────────────────────────────────────────────────
@@ -577,8 +600,9 @@ const components: OpenAPIV3_1.Document['components'] = {
       in: 'header',
       required: true,
       description:
-        'CSRF token obtained from the csrfToken cookie set during login. ' +
-        'Required for all state-mutating requests (POST / PUT / DELETE).',
+        'CSRF token obtained from the csrfToken cookie. Required only on endpoints ' +
+        'relying on cookie auth (POST /auth/refresh and POST /auth/logout) to prevent CSRF attacks. ' +
+        'The value must exactly match the value of the csrfToken cookie.',
       schema: {
         type: 'string',
         example: 'a1b2c3d4e5f67890abcdef1234567890',
@@ -589,7 +613,9 @@ const components: OpenAPIV3_1.Document['components'] = {
       name: 'csrfToken',
       in: 'cookie',
       required: true,
-      description: 'CSRF token stored in a cookie. Must match the x-csrf-token header.',
+      description:
+        'CSRF token stored in a Lax cookie (readable by frontend JavaScript, HttpOnly=false). ' +
+        'Must match the x-csrf-token header. Rotated on refresh.',
       schema: {
         type: 'string',
         example: 'a1b2c3d4e5f67890abcdef1234567890',
@@ -600,7 +626,9 @@ const components: OpenAPIV3_1.Document['components'] = {
       name: '__Host-refresh',
       in: 'cookie',
       required: true,
-      description: 'HttpOnly Secure SameSite=Strict cookie containing the opaque refresh token.',
+      description:
+        'HttpOnly Secure (in production) SameSite=Lax cookie containing the opaque refresh token. ' +
+        'Rotated on refresh. Path=/.',
       schema: {
         type: 'string',
         example: 'eyJhbGciOiJIUzI1NiJ9.refresh.token',
@@ -614,22 +642,22 @@ const components: OpenAPIV3_1.Document['components'] = {
     /** HttpOnly Secure cookie carrying the opaque refresh token. */
     SetRefreshTokenCookie: {
       description:
-        'Sets the __Host-refresh HttpOnly Secure SameSite=Strict cookie ' +
-        'containing the opaque refresh token (7-day TTL).',
+        'Sets the __Host-refresh HttpOnly Secure (in production) SameSite=Lax cookie ' +
+        'containing the opaque refresh token (7-day TTL). Rotated on refresh. Path=/.',
       schema: {
         type: 'string',
         example:
-          '__Host-refresh=eyJ...; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800',
+          '__Host-refresh=eyJ...; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800',
       },
     },
     /** JS-readable CSRF cookie companion to the refresh token cookie. */
     SetCsrfCookie: {
       description:
-        'Sets the csrfToken SameSite=Strict cookie (readable by JS) ' +
-        'that must be echoed back in the x-csrf-token header.',
+        'Sets the csrfToken SameSite=Lax cookie (readable by JS, HttpOnly=false) ' +
+        'that must be echoed back in the x-csrf-token header. Rotated on refresh. Path=/.',
       schema: {
         type: 'string',
-        example: 'csrfToken=a1b2c3d4; Path=/; SameSite=Strict',
+        example: 'csrfToken=a1b2c3d4; Path=/; SameSite=Lax',
       },
     },
   },
@@ -644,24 +672,12 @@ const components: OpenAPIV3_1.Document['components'] = {
 // ---------------------------------------------------------------------------
 const tags: OpenAPIV3_1.Document['tags'] = [
   {
-    name: 'Auth',
+    name: 'Authentication',
     description: 'Registration, login, logout, and token lifecycle.',
-    externalDocs: {
-      description: 'Auth module source',
-      url: 'https://github.com/elevo/auth/tree/main/src/modules/auth',
-    },
   },
   {
-    name: 'User',
+    name: 'Users',
     description: 'Authenticated user profile operations.',
-  },
-  {
-    name: 'Admin',
-    description: 'Privileged operations restricted to admin roles.',
-  },
-  {
-    name: 'Health',
-    description: 'Liveness and readiness probes.',
   },
 ];
 
@@ -677,7 +693,10 @@ export const openApiSpec = {
     version: 'v1',
     description:
       'Authentication and Authorization API for the Elevo SaaS platform. ' +
-      'All protected endpoints require a Bearer JWT in the Authorization header.',
+      'Authentication is token- and cookie-based:\n' +
+      '* **Access Token**: Short-lived Bearer token returned in the JSON response payload (`accessToken`). Used in the `Authorization` header.\n' +
+      '* **Refresh Token**: Long-lived rotating token stored in an HttpOnly, Secure SameSite=Lax cookie (`__Host-refresh`). Never returned in the response body.\n' +
+      '* **CSRF Protection**: All state-mutating requests relying on the refresh cookie must match the `x-csrf-token` header to the `csrfToken` cookie value.',
     contact: {
       name: 'Elevo Engineering',
       url: 'https://github.com/elevo/auth',
@@ -723,12 +742,12 @@ export const openApiSpec = {
       post: {
         operationId: 'registerUser',
         summary: 'Register a new user',
-        description:
-          'Registers a new user with their email, password, and name. ' +
-          'Accounts are created with verification required status.',
-        tags: ['Auth'],
+        description: 'Creates a new user account with unverified status and triggers an email verification flow.',
+        tags: ['Authentication'],
+        security: [],
         requestBody: {
           required: true,
+          description: 'User registration credentials and profile details.',
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/RegisterRequest' },
@@ -737,7 +756,7 @@ export const openApiSpec = {
         },
         responses: {
           '201': {
-            description: 'User registered successfully.',
+            description: 'User account registered successfully.',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/RegisterResponse' },
@@ -746,6 +765,7 @@ export const openApiSpec = {
           },
           '400': { $ref: '#/components/responses/ValidationError' },
           '409': { $ref: '#/components/responses/ConflictError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -754,11 +774,14 @@ export const openApiSpec = {
         operationId: 'loginUser',
         summary: 'Log in user',
         description:
-          'Authenticates a user with email and password. Returns a short-lived JWT access token in the JSON body, ' +
-          'and sets HttpOnly cookies for rotating refresh tokens and CSRF protection.',
-        tags: ['Auth'],
+          'Authenticates a user using email and password. ' +
+          'On success, returns a short-lived access token in the JSON body, ' +
+          'and sets the long-lived refresh token and CSRF companion token as HttpOnly and Lax cookies.',
+        tags: ['Authentication'],
+        security: [],
         requestBody: {
           required: true,
+          description: 'Login email and password.',
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/LoginRequest' },
@@ -770,7 +793,7 @@ export const openApiSpec = {
             description: 'Login successful. Cookies set.',
             headers: {
               'Set-Cookie': {
-                description: 'Sets __Host-refresh (HttpOnly) and csrfToken cookies. See components headers.',
+                description: 'Sets the __Host-refresh (HttpOnly) and csrfToken cookies. See components headers.',
                 schema: { type: 'string' },
               },
             },
@@ -782,6 +805,7 @@ export const openApiSpec = {
           },
           '400': { $ref: '#/components/responses/ValidationError' },
           '401': { $ref: '#/components/responses/UnauthorizedError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -790,9 +814,10 @@ export const openApiSpec = {
         operationId: 'refreshAccessToken',
         summary: 'Refresh access token',
         description:
-          'Rotates the HttpOnly refresh token cookie and issues a new access token. ' +
-          'Requires valid CSRF cookies/headers. Does not use BearerAuth.',
-        tags: ['Auth'],
+          'Rotates the active HttpOnly refresh token cookie and issues a new access token. ' +
+          'Requires valid CSRF verification cookies and headers.',
+        tags: ['Authentication'],
+        security: [],
         parameters: [
           { $ref: '#/components/parameters/XCsrfToken' },
           { $ref: '#/components/parameters/CsrfTokenCookie' },
@@ -815,6 +840,7 @@ export const openApiSpec = {
           },
           '401': { $ref: '#/components/responses/UnauthorizedError' },
           '403': { $ref: '#/components/responses/ForbiddenError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -823,8 +849,10 @@ export const openApiSpec = {
         operationId: 'logoutUser',
         summary: 'Log out user',
         description:
-          'Revokes the refresh token and clears all cookies. Requires valid CSRF cookies/headers. Idempotent.',
-        tags: ['Auth'],
+          'Revokes the user session and clears all authentication/CSRF cookies. ' +
+          'Requires valid CSRF verification cookies and headers. Idempotent.',
+        tags: ['Authentication'],
+        security: [],
         parameters: [
           { $ref: '#/components/parameters/XCsrfToken' },
           { $ref: '#/components/parameters/CsrfTokenCookie' },
@@ -832,7 +860,7 @@ export const openApiSpec = {
             name: '__Host-refresh',
             in: 'cookie',
             required: false,
-            description: 'HttpOnly Secure SameSite=Strict cookie containing the opaque refresh token to revoke.',
+            description: 'HttpOnly Secure SameSite=Lax cookie containing the opaque refresh token to revoke.',
             schema: { type: 'string' },
           },
         ],
@@ -852,6 +880,7 @@ export const openApiSpec = {
             },
           },
           '403': { $ref: '#/components/responses/ForbiddenError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -859,10 +888,12 @@ export const openApiSpec = {
       post: {
         operationId: 'verifyEmail',
         summary: 'Verify email address',
-        description: "Marks the user's email as verified using the token received in their verification link.",
-        tags: ['Auth'],
+        description: 'Marks a user account email as verified using the opaque verification token received via email.',
+        tags: ['Authentication'],
+        security: [],
         requestBody: {
           required: true,
+          description: 'Opaque verification token.',
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/VerifyEmailRequest' },
@@ -879,6 +910,7 @@ export const openApiSpec = {
             },
           },
           '400': { $ref: '#/components/responses/ValidationError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -886,10 +918,12 @@ export const openApiSpec = {
       post: {
         operationId: 'resendVerificationEmail',
         summary: 'Resend verification email',
-        description: "Sends another email verification link to the user's email if their account is not already verified.",
-        tags: ['Auth'],
+        description: 'Resends an email verification link if the account exists and is not yet verified.',
+        tags: ['Authentication'],
+        security: [],
         requestBody: {
           required: true,
+          description: 'Registered email address of the account.',
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/ResendVerificationRequest' },
@@ -906,6 +940,7 @@ export const openApiSpec = {
             },
           },
           '400': { $ref: '#/components/responses/ValidationError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -913,10 +948,12 @@ export const openApiSpec = {
       post: {
         operationId: 'requestPasswordReset',
         summary: 'Request password reset link',
-        description: 'Sends a password reset token via email to the user if the account exists.',
-        tags: ['Auth'],
+        description: 'Sends a password reset token via email if the account exists.',
+        tags: ['Authentication'],
+        security: [],
         requestBody: {
           required: true,
+          description: 'Registered email address of the account.',
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/ForgotPasswordRequest' },
@@ -933,6 +970,7 @@ export const openApiSpec = {
             },
           },
           '400': { $ref: '#/components/responses/ValidationError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -940,10 +978,12 @@ export const openApiSpec = {
       post: {
         operationId: 'resetPassword',
         summary: 'Reset password',
-        description: 'Resets the password using a valid reset token.',
-        tags: ['Auth'],
+        description: 'Resets the account password using the opaque token received in the password reset email.',
+        tags: ['Authentication'],
+        security: [],
         requestBody: {
           required: true,
+          description: 'Opaque reset token and new password credentials.',
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/ResetPasswordRequest' },
@@ -960,6 +1000,7 @@ export const openApiSpec = {
             },
           },
           '400': { $ref: '#/components/responses/ValidationError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },
@@ -967,8 +1008,8 @@ export const openApiSpec = {
       get: {
         operationId: 'getCurrentUser',
         summary: 'Get current user profile',
-        description: 'Retrieves the profile details of the currently authenticated user. Requires a valid Bearer JWT.',
-        tags: ['User'],
+        description: 'Retrieves profile details of the currently authenticated user. Requires a valid Bearer JWT.',
+        tags: ['Users'],
         security: [{ BearerAuth: [] }],
         responses: {
           '200': {
@@ -981,6 +1022,7 @@ export const openApiSpec = {
           },
           '401': { $ref: '#/components/responses/UnauthorizedError' },
           '403': { $ref: '#/components/responses/ForbiddenError' },
+          '500': { $ref: '#/components/responses/InternalServerError' },
         },
       },
     },

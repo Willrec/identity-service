@@ -40,6 +40,12 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm prisma:generate
 
+      - name: Build OpenAPI Spec & Types
+        run: pnpm openapi:build
+
+      - name: Check for uncommitted OpenAPI changes
+        run: git diff --exit-code src/docs/openapi.json src/docs/openapi-types.ts
+
       - name: Lint
         run: pnpm lint
 
