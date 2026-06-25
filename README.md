@@ -99,3 +99,21 @@ pnpm install
 pnpm prisma:generate
 ```
 
+### Database Seeding
+
+The service comes with a seeder script that populates the database with default roles (`SUPER_ADMIN`, `ADMIN`, `USER`) and optionally a default administrator user.
+
+To seed the database, run:
+
+```bash
+pnpm seed
+```
+
+By default, the script only creates the roles. To create a default administrator user, configure the following variables in your `.env` file first:
+*   `SEED_DEFAULT_ADMIN`: Set to `true` to enable.
+*   `DEFAULT_ADMIN_EMAIL`: Email for the administrator account.
+*   `DEFAULT_ADMIN_PASSWORD`: Password for the administrator account.
+*   `DEFAULT_ADMIN_FIRST_NAME`: First name for the administrator.
+*   `DEFAULT_ADMIN_LAST_NAME`: Last name for the administrator.
+
+
