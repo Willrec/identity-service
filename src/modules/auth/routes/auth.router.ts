@@ -3,6 +3,16 @@ import { AuthController } from '../controllers/auth.controller.js';
 import { validateRequest } from '../../../middleware/validate.js';
 import { registerSchema, loginSchema, refreshTokenSchema, verifyEmailSchema, resendVerificationEmailSchema, requestPasswordResetSchema, resetPasswordSchema } from '../validators/auth.validator.js';
 import { authenticate } from '../../../middleware/authenticate.js';
+import {
+  registerRateLimiter,
+  loginRateLimiter,
+  refreshRateLimiter,
+  logoutRateLimiter,
+  verifyEmailRateLimiter,
+  resendVerificationRateLimiter,
+  forgotPasswordRateLimiter,
+  resetPasswordRateLimiter,
+} from '../../../middleware/rateLimit.js';
 import { AuthService } from '../services/auth.service.js';
 import { UserService } from '../../users/services/user.service.js';
 import { PasswordService } from '../services/password.service.js';
@@ -39,14 +49,14 @@ const authController = new AuthController(authService);
 const router: IRouter = Router();
 
 // Routes
-router.post('/register', validateRequest(registerSchema), authController.register);
-router.post('/login', validateRequest(loginSchema), authController.login);
-router.post('/refresh', validateRequest(refreshTokenSchema), authController.refresh);
-router.post('/logout', validateRequest(refreshTokenSchema), authController.logout);
-router.post('/verify-email', validateRequest(verifyEmailSchema), authController.verifyEmail);
-router.post('/resend-verification', validateRequest(resendVerificationEmailSchema), authController.resendVerification);
-router.post('/forgot-password', validateRequest(requestPasswordResetSchema), authController.forgotPassword);
-router.post('/reset-password', validateRequest(resetPasswordSchema), authController.resetPassword);
+router.post('/register', registerRateLimiter, validateRequest(registerSchema), authController.register);
+router.post('/login', loginRateLimiter, validateRequest(loginSchema), authController.login);
+router.post('/refresh', refreshRateLimiter, validateRequest(refreshTokenSchema), authController.refresh);
+router.post('/logout', logoutRateLimiter, validateRequest(refreshTokenSchema), authController.logout);
+router.post('/verify-email', verifyEmailRateLimiter, validateRequest(verifyEmailSchema), authController.verifyEmail);
+router.post('/resend-verification', resendVerificationRateLimiter, validateRequest(resendVerificationEmailSchema), authController.resendVerification);
+router.post('/forgot-password', forgotPasswordRateLimiter, validateRequest(requestPasswordResetSchema), authController.forgotPassword);
+router.post('/reset-password', resetPasswordRateLimiter, validateRequest(resetPasswordSchema), authController.resetPassword);
 router.get('/me', authenticate, authController.me);
 
 export { router as authRouter };
