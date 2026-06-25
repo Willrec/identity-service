@@ -116,4 +116,15 @@ By default, the script only creates the roles. To create a default administrator
 *   `DEFAULT_ADMIN_FIRST_NAME`: First name for the administrator.
 *   `DEFAULT_ADMIN_LAST_NAME`: Last name for the administrator.
 
+### Diagnostics Tool
+
+The project includes a diagnostics script to analyze your environment and check dependencies, database connections, environment variables, cryptographic keys, and migrations:
+
+```bash
+pnpm doctor
+```
+
+This command will output a detailed PASS/FAIL report highlighting any setup issues with actionable troubleshooting recommendations.
+
+
 

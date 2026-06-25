@@ -44,7 +44,8 @@
     "env:init": "node scripts/init-env.js",
     "keys:generate": "node scripts/generate-keys.js",
     "setup": "node scripts/setup.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "doctor": "node scripts/doctor.js"
   },
   "dependencies": {
     "@prisma/client": "^6.13.0",
