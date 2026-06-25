@@ -42,7 +42,8 @@
     "test:db:down": "docker compose -f docker-compose.test.yml down -v",
     "test:db:reset": "npm run test:db:down && npm run test:db:up",
     "env:init": "node scripts/init-env.js",
-    "keys:generate": "node scripts/generate-keys.js"
+    "keys:generate": "node scripts/generate-keys.js",
+    "setup": "node scripts/setup.js"
   },
   "dependencies": {
     "@prisma/client": "^6.13.0",

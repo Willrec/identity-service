@@ -45,6 +45,16 @@ To run this project locally, ensure you have the following installed:
 *   **pnpm**: version `>=9`
 *   **Docker & Docker Compose**: (Recommended for running the test database locally)
 
+### One-Command Setup
+
+The project provides a setup script that automates the verification of Node.js and pnpm versions, installs dependencies, initializes the local `.env` configuration file, generates secure JWT RSA keys, and generates the Prisma database client:
+
+```bash
+pnpm setup
+```
+
+Once completed, configure the environment variables described below inside your newly created `.env` file before running the service.
+
 ### Environment Variables
 
 The Identity Service requires configuration variables to boot. Run the initialization script to generate your local `.env` configuration file:
