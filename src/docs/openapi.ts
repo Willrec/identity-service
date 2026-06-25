@@ -60,8 +60,8 @@ const components: OpenAPIObject['components'] = {
     },
 
     /**
-     * Base envelope for successful responses.
-     * Individual endpoints extend this with their own `data` property.
+     * Base envelope for successful responses with no data payload.
+     * Individual endpoints that return data extend beyond this.
      */
     SuccessResponse: {
       type: 'object',
@@ -74,15 +74,440 @@ const components: OpenAPIObject['components'] = {
         },
       },
     },
+
+    // ── Enums ──────────────────────────────────────────────────────────────────
+    /** Mirrors domain.types.ts › UserStatus */
+    UserStatus: {
+      type: 'string',
+      enum: ['ACTIVE', 'SUSPENDED', 'DELETED'],
+      description: 'Lifecycle state of a user account.',
+      example: 'ACTIVE',
+    },
+
+    // ── Domain objects ─────────────────────────────────────────────────────────
+    /**
+     * Full user read model — mirrors UserResponseDto.
+     * avatarUrl uses OAS 3.1 anyOf-null (no deprecated nullable: true).
+     */
+    UserResponse: {
+      type: 'object',
+      required: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'avatarUrl',
+        'emailVerified',
+        'status',
+        'createdAt',
+        'updatedAt',
+      ],
+      properties: {
+        id: {
+          type: 'string',
+          format: 'uuid',
+          example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+        },
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'john.doe@example.com',
+        },
+        firstName: { type: 'string', example: 'John' },
+        lastName: { type: 'string', example: 'Doe' },
+        avatarUrl: {
+          // OAS 3.1 nullable — no deprecated `nullable: true`
+          anyOf: [{ type: 'string', format: 'uri' }, { type: 'null' }],
+          example: 'https://cdn.example.com/avatars/user.jpg',
+        },
+        emailVerified: { type: 'boolean', example: true },
+        status: { $ref: '#/components/schemas/UserStatus' },
+        createdAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2024-01-15T10:30:00.000Z',
+        },
+        updatedAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2024-06-25T14:00:00.000Z',
+        },
+      },
+    },
+
+    // ── Request schemas ────────────────────────────────────────────────────────
+    /** Mirrors registerSchema (auth.validator.ts) */
+    RegisterRequest: {
+      type: 'object',
+      required: ['email', 'password', 'firstName', 'lastName'],
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'john.doe@example.com',
+        },
+        password: {
+          type: 'string',
+          minLength: 8,
+          maxLength: 72,
+          description:
+            'Must contain at least one uppercase letter and one digit. ' +
+            'Max 72 chars (bcrypt limit).',
+          example: 'Str0ngP@ss',
+        },
+        firstName: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 100,
+          example: 'John',
+        },
+        lastName: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 100,
+          example: 'Doe',
+        },
+      },
+      example: {
+        email: 'john.doe@example.com',
+        password: 'Str0ngP@ss',
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+    },
+
+    /** Mirrors loginSchema (auth.validator.ts) */
+    LoginRequest: {
+      type: 'object',
+      required: ['email', 'password'],
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'john.doe@example.com',
+        },
+        password: {
+          type: 'string',
+          minLength: 1,
+          example: 'Str0ngP@ss',
+        },
+      },
+      example: {
+        email: 'john.doe@example.com',
+        password: 'Str0ngP@ss',
+      },
+    },
+
+    /** Mirrors requestPasswordResetSchema (auth.validator.ts) */
+    ForgotPasswordRequest: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          example: 'john.doe@example.com',
+        },
+      },
+      example: { email: 'john.doe@example.com' },
+    },
+
+    /** Mirrors resetPasswordSchema (auth.validator.ts) */
+    ResetPasswordRequest: {
+      type: 'object',
+      required: ['token', 'newPassword'],
+      properties: {
+        token: {
+          type: 'string',
+          minLength: 1,
+          description: 'Opaque reset token received via email link.',
+          example: 'eyJhbGciOiJIUzI1NiJ9.reset.token',
+        },
+        newPassword: {
+          type: 'string',
+          minLength: 8,
+          maxLength: 72,
+          description:
+            'Must contain at least one uppercase letter and one digit. ' +
+            'Max 72 chars (bcrypt limit).',
+          example: 'NewStr0ng!',
+        },
+      },
+      example: {
+        token: 'eyJhbGciOiJIUzI1NiJ9.reset.token',
+        newPassword: 'NewStr0ng!',
+      },
+    },
+
+    /** Mirrors verifyEmailSchema (auth.validator.ts) */
+    VerifyEmailRequest: {
+      type: 'object',
+      required: ['token'],
+      properties: {
+        token: {
+          type: 'string',
+          minLength: 1,
+          description: 'Opaque verification token received via email link.',
+          example: 'eyJhbGciOiJIUzI1NiJ9.verify.token',
+        },
+      },
+      example: { token: 'eyJhbGciOiJIUzI1NiJ9.verify.token' },
+    },
+
+    // ── Response schemas ───────────────────────────────────────────────────────
+    /**
+     * POST /auth/register — 201
+     * Slim projection of the created user (RegisterResponseDto):
+     * id + email + status only. Full profile available via GET /user/me.
+     */
+    RegisterResponse: {
+      type: 'object',
+      required: ['success', 'data'],
+      properties: {
+        success: { type: 'boolean', enum: [true], example: true },
+        data: {
+          type: 'object',
+          required: ['user'],
+          properties: {
+            user: {
+              type: 'object',
+              required: ['id', 'email', 'status'],
+              properties: {
+                id: {
+                  type: 'string',
+                  format: 'uuid',
+                  example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+                },
+                email: {
+                  type: 'string',
+                  format: 'email',
+                  example: 'john.doe@example.com',
+                },
+                status: { $ref: '#/components/schemas/UserStatus' },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    /**
+     * POST /auth/login — 200
+     * refreshToken is rotated into the __Host-refresh HttpOnly cookie.
+     * Mirrors LoginResponseDto minus refreshToken (auth.dto.ts).
+     */
+    LoginResponse: {
+      type: 'object',
+      required: ['success', 'data'],
+      properties: {
+        success: { type: 'boolean', enum: [true], example: true },
+        data: {
+          type: 'object',
+          required: ['user', 'accessToken'],
+          description:
+            'The refresh token is set as an HttpOnly cookie, not present in the body.',
+          properties: {
+            user: {
+              type: 'object',
+              required: ['id', 'email', 'status'],
+              properties: {
+                id: {
+                  type: 'string',
+                  format: 'uuid',
+                  example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+                },
+                email: {
+                  type: 'string',
+                  format: 'email',
+                  example: 'john.doe@example.com',
+                },
+                status: { $ref: '#/components/schemas/UserStatus' },
+              },
+            },
+            accessToken: {
+              type: 'string',
+              description: 'Short-lived JWT access token (15 min).',
+              example: 'eyJhbGciOiJSUzI1NiJ9.login.token',
+            },
+          },
+        },
+      },
+    },
+
+    /**
+     * POST /auth/refresh — 200
+     * Kept independent from LoginResponse so each can evolve separately.
+     * The new refresh token is rotated into the HttpOnly cookie; not in the body.
+     */
+    RefreshResponse: {
+      type: 'object',
+      required: ['success', 'data'],
+      properties: {
+        success: { type: 'boolean', enum: [true], example: true },
+        data: {
+          type: 'object',
+          required: ['user', 'accessToken'],
+          description:
+            'The new refresh token is rotated into the __Host-refresh HttpOnly cookie.',
+          properties: {
+            user: {
+              type: 'object',
+              required: ['id', 'email', 'status'],
+              properties: {
+                id: {
+                  type: 'string',
+                  format: 'uuid',
+                  example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+                },
+                email: {
+                  type: 'string',
+                  format: 'email',
+                  example: 'john.doe@example.com',
+                },
+                status: { $ref: '#/components/schemas/UserStatus' },
+              },
+            },
+            accessToken: {
+              type: 'string',
+              description: 'Newly issued short-lived JWT access token (15 min).',
+              example: 'eyJhbGciOiJSUzI1NiJ9.refresh.token',
+            },
+          },
+        },
+      },
+    },
   },
 
-  // ── Reusable responses (populated as endpoints are documented) ─────────────
-  responses: {},
+  // ── Named responses ────────────────────────────────────────────────────────
+  // All bodies $ref ErrorResponse — no schema duplication.
+  responses: {
+    ValidationError: {
+      description: 'Request body or parameters failed schema validation.',
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ErrorResponse' },
+          example: {
+            success: false,
+            error: {
+              code: 'BAD_REQUEST',
+              message: 'Invalid email address',
+              requestId: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            },
+          },
+        },
+      },
+    },
+    UnauthorizedError: {
+      description: 'Authentication credentials are missing or invalid.',
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ErrorResponse' },
+          example: {
+            success: false,
+            error: {
+              code: 'UNAUTHORIZED',
+              message: 'Unauthorized',
+              requestId: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            },
+          },
+        },
+      },
+    },
+    ForbiddenError: {
+      description: 'The authenticated user lacks the required permissions.',
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ErrorResponse' },
+          example: {
+            success: false,
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Forbidden',
+              requestId: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            },
+          },
+        },
+      },
+    },
+    NotFoundError: {
+      description: 'The requested resource does not exist.',
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ErrorResponse' },
+          example: {
+            success: false,
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Not Found',
+              requestId: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            },
+          },
+        },
+      },
+    },
+    ConflictError: {
+      description: 'A resource with the same unique identifier already exists.',
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ErrorResponse' },
+          example: {
+            success: false,
+            error: {
+              code: 'CONFLICT',
+              message: 'Email already registered',
+              requestId: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            },
+          },
+        },
+      },
+    },
+  },
 
   // ── Reusable parameters ────────────────────────────────────────────────────
-  parameters: {},
+  // Declared now so endpoints can $ref without touching this file later.
+  parameters: {
+    /** Required on all state-mutating requests once CSRF protection is active. */
+    XCsrfToken: {
+      name: 'x-csrf-token',
+      in: 'header',
+      required: true,
+      description:
+        'CSRF token obtained from the csrfToken cookie set during login. ' +
+        'Required for all state-mutating requests (POST / PUT / DELETE).',
+      schema: {
+        type: 'string',
+        example: 'a1b2c3d4e5f67890abcdef1234567890',
+      },
+    },
+  },
 
-  // ── Reusable request bodies ────────────────────────────────────────────────
+  // ── Reusable headers ───────────────────────────────────────────────────────
+  // Used in response objects to document Set-Cookie behaviour for tokens.
+  headers: {
+    /** HttpOnly Secure cookie carrying the opaque refresh token. */
+    SetRefreshTokenCookie: {
+      description:
+        'Sets the __Host-refresh HttpOnly Secure SameSite=Strict cookie ' +
+        'containing the opaque refresh token (7-day TTL).',
+      schema: {
+        type: 'string',
+        example:
+          '__Host-refresh=eyJ...; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800',
+      },
+    },
+    /** JS-readable CSRF cookie companion to the refresh token cookie. */
+    SetCsrfCookie: {
+      description:
+        'Sets the csrfToken SameSite=Strict cookie (readable by JS) ' +
+        'that must be echoed back in the x-csrf-token header.',
+      schema: {
+        type: 'string',
+        example: 'csrfToken=a1b2c3d4; Path=/; SameSite=Strict',
+      },
+    },
+  },
+
+  // ── Reusable request bodies (populated as endpoints are documented) ────────
   requestBodies: {},
 };
 
