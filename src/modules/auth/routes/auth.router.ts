@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
 import { validateRequest } from '../../../middleware/validate.js';
-import { registerSchema, loginSchema, refreshTokenSchema, verifyEmailSchema, resendVerificationEmailSchema, requestPasswordResetSchema, resetPasswordSchema } from '../validators/auth.validator.js';
+import { registerSchema, loginSchema, verifyEmailSchema, resendVerificationEmailSchema, requestPasswordResetSchema, resetPasswordSchema } from '../validators/auth.validator.js';
 import { authenticate } from '../../../middleware/authenticate.js';
 import {
   registerRateLimiter,
@@ -51,8 +51,8 @@ const router: IRouter = Router();
 // Routes
 router.post('/register', registerRateLimiter, validateRequest(registerSchema), authController.register);
 router.post('/login', loginRateLimiter, validateRequest(loginSchema), authController.login);
-router.post('/refresh', refreshRateLimiter, validateRequest(refreshTokenSchema), authController.refresh);
-router.post('/logout', logoutRateLimiter, validateRequest(refreshTokenSchema), authController.logout);
+router.post('/refresh', refreshRateLimiter, authController.refresh);
+router.post('/logout', logoutRateLimiter, authController.logout);
 router.post('/verify-email', verifyEmailRateLimiter, validateRequest(verifyEmailSchema), authController.verifyEmail);
 router.post('/resend-verification', resendVerificationRateLimiter, validateRequest(resendVerificationEmailSchema), authController.resendVerification);
 router.post('/forgot-password', forgotPasswordRateLimiter, validateRequest(requestPasswordResetSchema), authController.forgotPassword);

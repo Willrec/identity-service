@@ -19,9 +19,6 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1),
-});
 
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
@@ -48,7 +45,6 @@ export const resendVerificationEmailSchema = z.object({
 // Inferred types (use as parse output, NOT as DTO)
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
-export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

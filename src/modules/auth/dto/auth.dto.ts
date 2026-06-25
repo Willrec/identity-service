@@ -17,9 +17,6 @@ export interface LoginDto {
   deviceInfo?: DeviceInfoDto;
 }
 
-export interface RefreshTokenDto {
-  refreshToken: string;
-}
 
 export interface ChangePasswordDto {
   currentPassword: string;

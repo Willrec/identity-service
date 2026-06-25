@@ -5,14 +5,17 @@ import { EMAIL_VERIFY_TOKEN_TTL_S } from './src/config/constants.js';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
-async function requestAPI(method: string, path: string, body?: any) {
+async function requestAPI(method: string, path: string, body?: any, cookie?: string) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (cookie) headers['Cookie'] = cookie;
   const res = await fetch(`${API_URL}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: body ? JSON.stringify(body) : undefined
   });
   const data = await res.json().catch(() => null);
-  return { status: res.status, data };
+  const setCookie = res.headers.get('set-cookie');
+  return { status: res.status, data, setCookie };
 }
 
 async function runTests() {
@@ -159,6 +162,39 @@ async function runTests() {
     password: 'NewStrongPassword123!'
   });
   console.log(loginNewPassRes.status === 200 ? '✓ Login with new password successful (200)' : `✗ Failed (got ${loginNewPassRes.status})`);
+
+  console.log('\n--- Secure Cookie Flow Test ---');
+
+  console.log('\n[17] Login returns secure HttpOnly cookie');
+  const setCookieHeader = loginNewPassRes.setCookie;
+  let cookieOk = false;
+  let cookieVal = '';
+  if (setCookieHeader && setCookieHeader.includes('__Host-refresh=') && setCookieHeader.includes('HttpOnly') && setCookieHeader.includes('SameSite=Lax') && setCookieHeader.includes('Path=/')) {
+    cookieOk = true;
+    cookieVal = setCookieHeader.split(';')[0]; // "__Host-refresh=..."
+  }
+  console.log(cookieOk ? '✓ Secure cookie header is correct' : '✗ Failed to get correct secure cookie');
+
+  console.log('\n[18] Refresh rotates the cookie');
+  const refreshRes = await requestAPI('POST', '/auth/refresh', undefined, cookieVal);
+  let refreshCookieOk = false;
+  let newCookieVal = '';
+  if (refreshRes.status === 200 && refreshRes.setCookie && refreshRes.setCookie !== setCookieHeader && refreshRes.setCookie.includes('__Host-refresh=')) {
+    refreshCookieOk = true;
+    newCookieVal = refreshRes.setCookie.split(';')[0];
+  }
+  console.log(refreshCookieOk ? '✓ Refresh successful and cookie rotated' : '✗ Failed to rotate cookie');
+
+  console.log('\n[19] Logout clears the cookie');
+  const logoutRes = await requestAPI('POST', '/auth/logout', undefined, newCookieVal);
+  let logoutCookieOk = false;
+  if (logoutRes.status === 200 && logoutRes.setCookie && logoutRes.setCookie.includes('Expires=')) {
+    logoutCookieOk = true;
+  }
+  console.log(logoutCookieOk ? '✓ Logout successful and cookie cleared' : '✗ Failed to clear cookie');
+
+  const afterLogoutRes = await requestAPI('POST', '/auth/refresh', undefined, newCookieVal);
+  console.log(afterLogoutRes.status === 401 ? '✓ Refresh after logout blocked (401)' : `✗ Failed (got ${afterLogoutRes.status})`);
 
   await prisma.$disconnect();
 }

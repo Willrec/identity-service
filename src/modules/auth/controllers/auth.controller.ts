@@ -1,7 +1,18 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction, CookieOptions } from 'express';
 import type { AuthService } from '../services/auth.service.js';
-import type { RegisterDto, LoginDto, RefreshTokenDto, VerifyEmailDto, ResendVerificationEmailDto, RequestPasswordResetDto, ResetPasswordDto } from '../dto/auth.dto.js';
+import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationEmailDto, RequestPasswordResetDto, ResetPasswordDto } from '../dto/auth.dto.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
+import { env } from '../../../config/env.js';
+import { REFRESH_TOKEN_TTL_S, REFRESH_COOKIE_NAME } from '../../../config/constants.js';
+
+const getRefreshCookieOptions = (): CookieOptions => ({
+  httpOnly: true,
+  secure: env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: REFRESH_TOKEN_TTL_S * 1000,
+  priority: 'high',
+} as CookieOptions & { priority: 'high' });
 
 export class AuthController {
   constructor(private readonly authService: AuthService) { }
@@ -37,9 +48,13 @@ export class AuthController {
       };
       
       const result = await this.authService.login(dto);
+      const { refreshToken, ...data } = result;
+
+      res.cookie(REFRESH_COOKIE_NAME, refreshToken, getRefreshCookieOptions());
+
       res.status(200).json({
         success: true,
-        data: result,
+        data,
       });
     } catch (error) {
       next(error);
@@ -47,15 +62,24 @@ export class AuthController {
   };
 
   refresh = async (
-    req: Request<unknown, unknown, RefreshTokenDto>,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const result = await this.authService.refresh(req.body.refreshToken);
+      const token = req.cookies[REFRESH_COOKIE_NAME];
+      if (!token) {
+        throw HttpError.Unauthorized('Missing refresh token', 'INVALID_REFRESH_TOKEN');
+      }
+
+      const result = await this.authService.refresh(token);
+      const { refreshToken, ...data } = result;
+
+      res.cookie(REFRESH_COOKIE_NAME, refreshToken, getRefreshCookieOptions());
+
       res.status(200).json({
         success: true,
-        data: result,
+        data,
       });
     } catch (error) {
       next(error);
@@ -63,12 +87,16 @@ export class AuthController {
   };
 
   logout = async (
-    req: Request<unknown, unknown, RefreshTokenDto>,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      await this.authService.logout(req.body.refreshToken);
+      const token = req.cookies[REFRESH_COOKIE_NAME];
+      if (token) {
+        await this.authService.logout(token);
+      }
+      res.clearCookie(REFRESH_COOKIE_NAME, getRefreshCookieOptions());
       res.status(200).json({
         success: true,
       });
