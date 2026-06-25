@@ -33,3 +33,45 @@ The Identity Service provides a comprehensive set of features out of the box:
 *   **OpenAPI 3.1 Specification**: Single source of truth API contract with Swagger UI for local documentation and sandbox testing, coupled with Redocly for linting/validation.
 *   **Docker Integration**: Streamlined containerized local environments for running tests and dependencies seamlessly.
 *   **CI/CD Pipeline**: Integrated GitHub Actions workflows ensuring linting, formatting, type safety, OpenAPI contract validation, and tests pass successfully on every push.
+
+---
+
+## Setup & Getting Started
+
+### Requirements
+
+To run this project locally, ensure you have the following installed:
+*   **Node.js**: version `>=22.19.0`
+*   **pnpm**: version `>=9`
+*   **Docker & Docker Compose**: (Recommended for running the test database locally)
+
+### Environment Variables
+
+The Identity Service requires configuration variables to boot. Run the initialization script to generate your local `.env` configuration file:
+
+```bash
+pnpm env:init
+```
+
+A default `.env` will be copied from `.env.example`. Make sure to configure the variables described below inside `.env`:
+
+*   `NODE_ENV`: The server execution environment (`development`, `production`, `test`).
+*   `PORT`: The port the Express HTTP server binds to (default: `3000`).
+*   `DATABASE_URL`: Connection string for PostgreSQL database.
+*   `CORS_ORIGINS`: Comma-separated list of allowed client origins.
+*   `BCRYPT_SALT_ROUNDS`: Number of salt rounds for password hashing.
+*   `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`: 2048-bit RS256 RSA keypair in PEM format (newlines escaped as literal `\n`).
+*   `JWT_ACCESS_TOKEN_EXPIRES_IN`: Expire duration for generated JWTs (e.g. `15m`).
+
+### Installation
+
+Once environment variables are configured, install project dependencies and generate the database client:
+
+```bash
+# Install packages
+pnpm install
+
+# Generate Prisma DB Client
+pnpm prisma:generate
+```
+
