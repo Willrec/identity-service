@@ -1,4 +1,4 @@
-name: CI
+name: Identity Service CI
 
 on:
   push:

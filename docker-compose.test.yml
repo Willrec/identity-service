@@ -1,4 +1,4 @@
-name: elevo-auth-test
+name: identity-service-test
 
 services:
   db:

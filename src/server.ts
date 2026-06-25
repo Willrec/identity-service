@@ -18,7 +18,7 @@ async function start(): Promise<void> {
   httpServer.listen(env.PORT, () => {
     logger.info(
       { port: env.PORT, env: env.NODE_ENV },
-      `elevo-auth-api running`,
+      `identity-service running`,
     );
   });
 }

@@ -688,18 +688,18 @@ export const openApiSpec = {
   openapi: '3.1.0',
 
   info: {
-    title: 'Elevo Auth API',
+    title: 'Identity Service API',
     // Contract version — tracks the API surface, not the software release.
     version: 'v1',
     description:
-      'Authentication and Authorization API for the Elevo SaaS platform. ' +
+      'Authentication and Authorization API for the generic Identity Service. ' +
       'Authentication is token- and cookie-based:\n' +
       '* **Access Token**: Short-lived Bearer token returned in the JSON response payload (`accessToken`). Used in the `Authorization` header.\n' +
       '* **Refresh Token**: Long-lived rotating token stored in an HttpOnly, Secure SameSite=Lax cookie (`__Host-refresh`). Never returned in the response body.\n' +
       '* **CSRF Protection**: All state-mutating requests relying on the refresh cookie must match the `x-csrf-token` header to the `csrfToken` cookie value.',
     contact: {
-      name: 'Elevo Engineering',
-      url: 'https://github.com/elevo/auth',
+      name: 'Identity Service Support',
+      url: 'https://github.com/generic-identity-service/auth',
     },
     license: {
       name: 'MIT',
@@ -709,7 +709,7 @@ export const openApiSpec = {
 
   externalDocs: {
     description: 'Full project README',
-    url: 'https://github.com/elevo/auth/blob/main/README.md',
+    url: 'https://github.com/generic-identity-service/auth/blob/main/README.md',
   },
 
   servers: [
@@ -1041,6 +1041,8 @@ docsRouter.get('/docs/openapi.json', (_req, res) => {
 
 // GET /docs — Swagger UI
 docsRouter.use('/docs', swaggerUi.serve);
-docsRouter.get('/docs', swaggerUi.setup(openApiSpec as unknown as Record<string, unknown>));
+docsRouter.get('/docs', swaggerUi.setup(openApiSpec as unknown as Record<string, unknown>, {
+    customSiteTitle: 'Identity Service API',
+  }));
 
 export { docsRouter as openApiRouter };

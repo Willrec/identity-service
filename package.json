@@ -1,7 +1,20 @@
 {
-  "name": "elevo-auth-api",
+  "name": "identity-service",
   "version": "0.1.0",
-  "description": "Authentication service for elevoCv SaaS platform",
+  "description": "Reusable generic Identity Service providing authentication, authorization, JWT tokens, sessions, RBAC, email verification, and password reset.",
+  "keywords": [
+    "identity-service",
+    "authentication",
+    "authorization",
+    "jwt",
+    "sessions",
+    "rbac",
+    "email-verification",
+    "password-reset",
+    "openapi",
+    "docker",
+    "ci"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22.19.0",

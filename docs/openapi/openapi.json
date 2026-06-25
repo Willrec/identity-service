@@ -1,12 +1,12 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Elevo Auth API",
+    "title": "Identity Service API",
     "version": "v1",
-    "description": "Authentication and Authorization API for the Elevo SaaS platform. Authentication is token- and cookie-based:\n* **Access Token**: Short-lived Bearer token returned in the JSON response payload (`accessToken`). Used in the `Authorization` header.\n* **Refresh Token**: Long-lived rotating token stored in an HttpOnly, Secure SameSite=Lax cookie (`__Host-refresh`). Never returned in the response body.\n* **CSRF Protection**: All state-mutating requests relying on the refresh cookie must match the `x-csrf-token` header to the `csrfToken` cookie value.",
+    "description": "Authentication and Authorization API for the generic Identity Service. Authentication is token- and cookie-based:\n* **Access Token**: Short-lived Bearer token returned in the JSON response payload (`accessToken`). Used in the `Authorization` header.\n* **Refresh Token**: Long-lived rotating token stored in an HttpOnly, Secure SameSite=Lax cookie (`__Host-refresh`). Never returned in the response body.\n* **CSRF Protection**: All state-mutating requests relying on the refresh cookie must match the `x-csrf-token` header to the `csrfToken` cookie value.",
     "contact": {
-      "name": "Elevo Engineering",
-      "url": "https://github.com/elevo/auth"
+      "name": "Identity Service Support",
+      "url": "https://github.com/generic-identity-service/auth"
     },
     "license": {
       "name": "MIT",
@@ -15,7 +15,7 @@
   },
   "externalDocs": {
     "description": "Full project README",
-    "url": "https://github.com/elevo/auth/blob/main/README.md"
+    "url": "https://github.com/generic-identity-service/auth/blob/main/README.md"
   },
   "servers": [
     {

@@ -53,7 +53,7 @@ async function run() {
   
   console.log('\n--- Attempt: Invalid Issuer ---');
   try {
-    jwt.verify(token, publicKey, { algorithms: ['RS256'], issuer: 'invalid-issuer', audience: 'elevo-client' });
+    jwt.verify(token, publicKey, { algorithms: ['RS256'], issuer: 'invalid-issuer', audience: 'identity-client' });
     console.error('❌ Expected error, but verification passed!');
   } catch (error: any) {
     console.log('✅ verification failed as expected:', error.message);
@@ -61,7 +61,7 @@ async function run() {
 
   console.log('\n--- Attempt: Invalid Audience ---');
   try {
-    jwt.verify(token, publicKey, { algorithms: ['RS256'], issuer: 'elevo-auth-api', audience: 'invalid-audience' });
+    jwt.verify(token, publicKey, { algorithms: ['RS256'], issuer: 'identity-service-api', audience: 'invalid-audience' });
     console.error('❌ Expected error, but verification passed!');
   } catch (error: any) {
     console.log('✅ verification failed as expected:', error.message);

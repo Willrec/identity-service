@@ -11,8 +11,8 @@ export class TokenService {
   private readonly privateKey: string;
   private readonly publicKey: string;
 
-  private readonly issuer = 'elevo-auth-api';
-  private readonly audience = 'elevo-client';
+  private readonly issuer = 'identity-service-api';
+  private readonly audience = 'identity-client';
 
   constructor() {
     // Replace escaped newlines from environment variables
