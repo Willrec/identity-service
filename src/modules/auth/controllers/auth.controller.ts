@@ -1,21 +1,16 @@
-import type { Request, Response, NextFunction, CookieOptions } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import type { AuthService } from '../services/auth.service.js';
+import type { TokenService } from '../services/token.service.js';
 import type { RegisterDto, LoginDto, VerifyEmailDto, ResendVerificationEmailDto, RequestPasswordResetDto, ResetPasswordDto } from '../dto/auth.dto.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
-import { env } from '../../../config/env.js';
-import { REFRESH_TOKEN_TTL_S, REFRESH_COOKIE_NAME } from '../../../config/constants.js';
-
-const getRefreshCookieOptions = (): CookieOptions => ({
-  httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
-  path: '/',
-  maxAge: REFRESH_TOKEN_TTL_S * 1000,
-  priority: 'high',
-} as CookieOptions & { priority: 'high' });
+import { COOKIES } from '../../../config/constants.js';
+import { getRefreshCookieOptions, getCSRFCookieOptions } from '../../../config/cookieOptions.js';
 
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly tokenService: TokenService
+  ) { }
 
   register = async (
     req: Request<unknown, unknown, RegisterDto>,
@@ -49,8 +44,12 @@ export class AuthController {
       
       const result = await this.authService.login(dto);
       const { refreshToken, ...data } = result;
+      const csrfToken = this.tokenService.generateCsrfToken();
 
-      res.cookie(REFRESH_COOKIE_NAME, refreshToken, getRefreshCookieOptions());
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Pragma', 'no-cache');
+      res.cookie(COOKIES.REFRESH, refreshToken, getRefreshCookieOptions());
+      res.cookie(COOKIES.CSRF, csrfToken, getCSRFCookieOptions());
 
       res.status(200).json({
         success: true,
@@ -67,15 +66,19 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const token = req.cookies[REFRESH_COOKIE_NAME];
+      const token = req.cookies[COOKIES.REFRESH];
       if (!token) {
         throw HttpError.Unauthorized('Missing refresh token', 'INVALID_REFRESH_TOKEN');
       }
 
       const result = await this.authService.refresh(token);
       const { refreshToken, ...data } = result;
+      const csrfToken = this.tokenService.generateCsrfToken();
 
-      res.cookie(REFRESH_COOKIE_NAME, refreshToken, getRefreshCookieOptions());
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Pragma', 'no-cache');
+      res.cookie(COOKIES.REFRESH, refreshToken, getRefreshCookieOptions());
+      res.cookie(COOKIES.CSRF, csrfToken, getCSRFCookieOptions());
 
       res.status(200).json({
         success: true,
@@ -92,11 +95,14 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const token = req.cookies[REFRESH_COOKIE_NAME];
+      const token = req.cookies[COOKIES.REFRESH];
       if (token) {
         await this.authService.logout(token);
       }
-      res.clearCookie(REFRESH_COOKIE_NAME, getRefreshCookieOptions());
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Pragma', 'no-cache');
+      res.clearCookie(COOKIES.REFRESH, getRefreshCookieOptions());
+      res.clearCookie(COOKIES.CSRF, getCSRFCookieOptions());
       res.status(200).json({
         success: true,
       });

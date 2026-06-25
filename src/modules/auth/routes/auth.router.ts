@@ -3,6 +3,7 @@ import { AuthController } from '../controllers/auth.controller.js';
 import { validateRequest } from '../../../middleware/validate.js';
 import { registerSchema, loginSchema, verifyEmailSchema, resendVerificationEmailSchema, requestPasswordResetSchema, resetPasswordSchema } from '../validators/auth.validator.js';
 import { authenticate } from '../../../middleware/authenticate.js';
+import { csrfProtection } from '../../../middleware/csrfProtection.js';
 import {
   registerRateLimiter,
   loginRateLimiter,
@@ -44,15 +45,15 @@ const authService = new AuthService(
   jwtTokenService
 );
 
-const authController = new AuthController(authService);
+const authController = new AuthController(authService, tokenService);
 
 const router: IRouter = Router();
 
 // Routes
 router.post('/register', registerRateLimiter, validateRequest(registerSchema), authController.register);
 router.post('/login', loginRateLimiter, validateRequest(loginSchema), authController.login);
-router.post('/refresh', refreshRateLimiter, authController.refresh);
-router.post('/logout', logoutRateLimiter, authController.logout);
+router.post('/refresh', refreshRateLimiter, csrfProtection, authController.refresh);
+router.post('/logout', logoutRateLimiter, csrfProtection, authController.logout);
 router.post('/verify-email', verifyEmailRateLimiter, validateRequest(verifyEmailSchema), authController.verifyEmail);
 router.post('/resend-verification', resendVerificationRateLimiter, validateRequest(resendVerificationEmailSchema), authController.resendVerification);
 router.post('/forgot-password', forgotPasswordRateLimiter, validateRequest(requestPasswordResetSchema), authController.forgotPassword);

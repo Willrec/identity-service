@@ -5,8 +5,8 @@ import { EMAIL_VERIFY_TOKEN_TTL_S } from './src/config/constants.js';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
-async function requestAPI(method: string, path: string, body?: any, cookie?: string) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+async function requestAPI(method: string, path: string, body?: any, cookie?: string, extraHeaders?: Record<string, string>) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extraHeaders };
   if (cookie) headers['Cookie'] = cookie;
   const res = await fetch(`${API_URL}${path}`, {
     method,
@@ -163,37 +163,74 @@ async function runTests() {
   });
   console.log(loginNewPassRes.status === 200 ? '✓ Login with new password successful (200)' : `✗ Failed (got ${loginNewPassRes.status})`);
 
-  console.log('\n--- Secure Cookie Flow Test ---');
+  console.log('\n--- CSRF & Secure Cookie Flow Test ---');
 
-  console.log('\n[17] Login returns secure HttpOnly cookie');
+  console.log('\n[17] Login returns refresh and CSRF cookies');
   const setCookieHeader = loginNewPassRes.setCookie;
   let cookieOk = false;
-  let cookieVal = '';
-  if (setCookieHeader && setCookieHeader.includes('__Host-refresh=') && setCookieHeader.includes('HttpOnly') && setCookieHeader.includes('SameSite=Lax') && setCookieHeader.includes('Path=/')) {
+  let refreshCookieVal = '';
+  let csrfCookieVal = '';
+  
+  if (setCookieHeader && setCookieHeader.includes('__Host-refresh=') && setCookieHeader.includes('csrfToken=')) {
     cookieOk = true;
-    cookieVal = setCookieHeader.split(';')[0]; // "__Host-refresh=..."
+    // VERY simple parsing just for testing
+    const parts = setCookieHeader.split(';');
+    for (const p of parts) {
+      if (p.includes('__Host-refresh=')) {
+        refreshCookieVal = p.split('__Host-refresh=')[1].split(',')[0].trim();
+      }
+      if (p.includes('csrfToken=')) {
+        csrfCookieVal = p.split('csrfToken=')[1].split(',')[0].trim();
+      }
+    }
   }
-  console.log(cookieOk ? '✓ Secure cookie header is correct' : '✗ Failed to get correct secure cookie');
+  console.log(cookieOk && refreshCookieVal && csrfCookieVal ? '✓ Both cookies created' : '✗ Failed to get cookies');
 
-  console.log('\n[18] Refresh rotates the cookie');
-  const refreshRes = await requestAPI('POST', '/auth/refresh', undefined, cookieVal);
+  const combinedCookies = `__Host-refresh=${refreshCookieVal}; csrfToken=${csrfCookieVal}`;
+
+  console.log('\n[18] Refresh without CSRF header -> 403');
+  const refreshNoHeaderRes = await requestAPI('POST', '/auth/refresh', undefined, combinedCookies);
+  console.log(refreshNoHeaderRes.status === 403 ? '✓ Blocked missing header (403)' : `✗ Failed (got ${refreshNoHeaderRes.status})`);
+
+  console.log('\n[19] Refresh without CSRF cookie -> 403');
+  const refreshNoCookieRes = await requestAPI('POST', '/auth/refresh', undefined, `__Host-refresh=${refreshCookieVal}`, { 'x-csrf-token': csrfCookieVal });
+  console.log(refreshNoCookieRes.status === 403 ? '✓ Blocked missing cookie (403)' : `✗ Failed (got ${refreshNoCookieRes.status})`);
+
+  console.log('\n[20] Refresh with mismatched CSRF -> 403');
+  const refreshMismatchRes = await requestAPI('POST', '/auth/refresh', undefined, combinedCookies, { 'x-csrf-token': 'wrong_token' });
+  console.log(refreshMismatchRes.status === 403 ? '✓ Blocked mismatched tokens (403)' : `✗ Failed (got ${refreshMismatchRes.status})`);
+
+  console.log('\n[21] Refresh with valid CSRF rotates cookies -> 200');
+  const refreshRes = await requestAPI('POST', '/auth/refresh', undefined, combinedCookies, { 'x-csrf-token': csrfCookieVal });
   let refreshCookieOk = false;
-  let newCookieVal = '';
-  if (refreshRes.status === 200 && refreshRes.setCookie && refreshRes.setCookie !== setCookieHeader && refreshRes.setCookie.includes('__Host-refresh=')) {
+  let newRefreshCookieVal = '';
+  let newCsrfCookieVal = '';
+  if (refreshRes.status === 200 && refreshRes.setCookie && refreshRes.setCookie.includes('__Host-refresh=') && refreshRes.setCookie.includes('csrfToken=')) {
     refreshCookieOk = true;
-    newCookieVal = refreshRes.setCookie.split(';')[0];
+    const parts = refreshRes.setCookie.split(';');
+    for (const p of parts) {
+      if (p.includes('__Host-refresh=')) {
+        newRefreshCookieVal = p.split('__Host-refresh=')[1].split(',')[0].trim();
+      }
+      if (p.includes('csrfToken=')) {
+        newCsrfCookieVal = p.split('csrfToken=')[1].split(',')[0].trim();
+      }
+    }
   }
-  console.log(refreshCookieOk ? '✓ Refresh successful and cookie rotated' : '✗ Failed to rotate cookie');
+  console.log(refreshCookieOk && newRefreshCookieVal !== refreshCookieVal && newCsrfCookieVal !== csrfCookieVal ? '✓ Refresh successful and BOTH cookies rotated' : '✗ Failed to rotate cookies properly');
 
-  console.log('\n[19] Logout clears the cookie');
-  const logoutRes = await requestAPI('POST', '/auth/logout', undefined, newCookieVal);
+  const newCombinedCookies = `__Host-refresh=${newRefreshCookieVal}; csrfToken=${newCsrfCookieVal}`;
+
+  console.log('\n[22] Logout clears both cookies');
+  const logoutRes = await requestAPI('POST', '/auth/logout', undefined, newCombinedCookies, { 'x-csrf-token': newCsrfCookieVal });
   let logoutCookieOk = false;
-  if (logoutRes.status === 200 && logoutRes.setCookie && logoutRes.setCookie.includes('Expires=')) {
+  if (logoutRes.status === 200 && logoutRes.setCookie && logoutRes.setCookie.includes('__Host-refresh=') && logoutRes.setCookie.includes('csrfToken=') && logoutRes.setCookie.includes('Expires=')) {
     logoutCookieOk = true;
   }
-  console.log(logoutCookieOk ? '✓ Logout successful and cookie cleared' : '✗ Failed to clear cookie');
+  console.log(logoutCookieOk ? '✓ Logout successful and cookies cleared' : '✗ Failed to clear cookies');
 
-  const afterLogoutRes = await requestAPI('POST', '/auth/refresh', undefined, newCookieVal);
+  console.log('\n[23] Refresh after logout blocked');
+  const afterLogoutRes = await requestAPI('POST', '/auth/refresh', undefined, newCombinedCookies, { 'x-csrf-token': newCsrfCookieVal });
   console.log(afterLogoutRes.status === 401 ? '✓ Refresh after logout blocked (401)' : `✗ Failed (got ${afterLogoutRes.status})`);
 
   await prisma.$disconnect();

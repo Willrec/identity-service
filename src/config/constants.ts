@@ -3,7 +3,16 @@ export const API_PREFIX = `/api/${API_VERSION}` as const;
 
 export const ACCESS_TOKEN_TTL_S = 15 * 60;           // 15 min
 export const REFRESH_TOKEN_TTL_S = 7 * 24 * 60 * 60; // 7 days
-export const REFRESH_COOKIE_NAME = '__Host-refresh';
+
+export const COOKIES = {
+  REFRESH: '__Host-refresh',
+  CSRF: 'csrfToken',
+} as const;
+
+export const HEADERS = {
+  CSRF: 'x-csrf-token',
+} as const;
+
 export const EMAIL_VERIFY_TOKEN_TTL_S = 24 * 60 * 60; // 24h
 export const RESET_TOKEN_TTL_S = 60 * 60;             // 1h
 

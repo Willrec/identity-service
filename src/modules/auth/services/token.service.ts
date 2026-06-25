@@ -19,6 +19,10 @@ export class TokenService {
     return crypto.randomBytes(64).toString('hex');
   }
 
+  generateCsrfToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+  }
+
   fromNowSeconds(seconds: number): Date {
     return new Date(Date.now() + seconds * 1000);
   }
