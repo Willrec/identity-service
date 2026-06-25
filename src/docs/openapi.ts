@@ -106,30 +106,47 @@ const components: OpenAPIObject['components'] = {
         id: {
           type: 'string',
           format: 'uuid',
+          description: 'Unique user identifier (UUIDv7).',
           example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
         },
         email: {
           type: 'string',
           format: 'email',
+          description: "User's registered email address.",
           example: 'john.doe@example.com',
         },
-        firstName: { type: 'string', example: 'John' },
-        lastName: { type: 'string', example: 'Doe' },
+        firstName: {
+          type: 'string',
+          description: "User's given name.",
+          example: 'John',
+        },
+        lastName: {
+          type: 'string',
+          description: "User's family name.",
+          example: 'Doe',
+        },
         avatarUrl: {
           // OAS 3.1 nullable — no deprecated `nullable: true`
           anyOf: [{ type: 'string', format: 'uri' }, { type: 'null' }],
+          description: "URL of the user's profile picture, or null if not set.",
           example: 'https://cdn.example.com/avatars/user.jpg',
         },
-        emailVerified: { type: 'boolean', example: true },
+        emailVerified: {
+          type: 'boolean',
+          description: 'Whether the user has confirmed their email address.',
+          example: true,
+        },
         status: { $ref: '#/components/schemas/UserStatus' },
         createdAt: {
           type: 'string',
           format: 'date-time',
+          description: 'ISO 8601 timestamp of when the account was created.',
           example: '2024-01-15T10:30:00.000Z',
         },
         updatedAt: {
           type: 'string',
           format: 'date-time',
+          description: 'ISO 8601 timestamp of the last account update.',
           example: '2024-06-25T14:00:00.000Z',
         },
       },
@@ -144,6 +161,7 @@ const components: OpenAPIObject['components'] = {
         email: {
           type: 'string',
           format: 'email',
+          description: 'Email address to register. Stored in lowercase.',
           example: 'john.doe@example.com',
         },
         password: {
@@ -159,12 +177,14 @@ const components: OpenAPIObject['components'] = {
           type: 'string',
           minLength: 1,
           maxLength: 100,
+          description: "User's given name.",
           example: 'John',
         },
         lastName: {
           type: 'string',
           minLength: 1,
           maxLength: 100,
+          description: "User's family name.",
           example: 'Doe',
         },
       },
@@ -184,11 +204,13 @@ const components: OpenAPIObject['components'] = {
         email: {
           type: 'string',
           format: 'email',
+          description: 'Registered email address.',
           example: 'john.doe@example.com',
         },
         password: {
           type: 'string',
           minLength: 1,
+          description: 'Account password.',
           example: 'Str0ngP@ss',
         },
       },
@@ -206,6 +228,7 @@ const components: OpenAPIObject['components'] = {
         email: {
           type: 'string',
           format: 'email',
+          description: 'Email of the account to send the password-reset link to.',
           example: 'john.doe@example.com',
         },
       },
@@ -276,16 +299,28 @@ const components: OpenAPIObject['components'] = {
                 id: {
                   type: 'string',
                   format: 'uuid',
+                  description: 'Unique user identifier (UUIDv7).',
                   example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
                 },
                 email: {
                   type: 'string',
                   format: 'email',
+                  description: "User's registered email address.",
                   example: 'john.doe@example.com',
                 },
                 status: { $ref: '#/components/schemas/UserStatus' },
               },
             },
+          },
+        },
+      },
+      example: {
+        success: true,
+        data: {
+          user: {
+            id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            email: 'john.doe@example.com',
+            status: 'ACTIVE',
           },
         },
       },
@@ -305,7 +340,7 @@ const components: OpenAPIObject['components'] = {
           type: 'object',
           required: ['user', 'accessToken'],
           description:
-            'The refresh token is set as an HttpOnly cookie, not present in the body.',
+            'The refresh token is rotated into the __Host-refresh HttpOnly cookie, not present in the body.',
           properties: {
             user: {
               type: 'object',
@@ -314,11 +349,13 @@ const components: OpenAPIObject['components'] = {
                 id: {
                   type: 'string',
                   format: 'uuid',
+                  description: 'Unique user identifier (UUIDv7).',
                   example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
                 },
                 email: {
                   type: 'string',
                   format: 'email',
+                  description: "User's registered email address.",
                   example: 'john.doe@example.com',
                 },
                 status: { $ref: '#/components/schemas/UserStatus' },
@@ -326,10 +363,21 @@ const components: OpenAPIObject['components'] = {
             },
             accessToken: {
               type: 'string',
-              description: 'Short-lived JWT access token (15 min).',
+              description: 'JWT access token signed with RS256. Valid for 15 minutes.',
               example: 'eyJhbGciOiJSUzI1NiJ9.login.token',
             },
           },
+        },
+      },
+      example: {
+        success: true,
+        data: {
+          user: {
+            id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            email: 'john.doe@example.com',
+            status: 'ACTIVE',
+          },
+          accessToken: 'eyJhbGciOiJSUzI1NiJ9.login.token',
         },
       },
     },
@@ -357,11 +405,13 @@ const components: OpenAPIObject['components'] = {
                 id: {
                   type: 'string',
                   format: 'uuid',
+                  description: 'Unique user identifier (UUIDv7).',
                   example: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
                 },
                 email: {
                   type: 'string',
                   format: 'email',
+                  description: "User's registered email address.",
                   example: 'john.doe@example.com',
                 },
                 status: { $ref: '#/components/schemas/UserStatus' },
@@ -369,10 +419,21 @@ const components: OpenAPIObject['components'] = {
             },
             accessToken: {
               type: 'string',
-              description: 'Newly issued short-lived JWT access token (15 min).',
+              description: 'Newly issued JWT access token signed with RS256. Valid for 15 minutes.',
               example: 'eyJhbGciOiJSUzI1NiJ9.refresh.token',
             },
           },
+        },
+      },
+      example: {
+        success: true,
+        data: {
+          user: {
+            id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+            email: 'john.doe@example.com',
+            status: 'ACTIVE',
+          },
+          accessToken: 'eyJhbGciOiJSUzI1NiJ9.refresh.token',
         },
       },
     },
@@ -576,7 +637,21 @@ export const openApiSpec = {
   tags,
   components,
 
-  // Populated incrementally as endpoints are documented.
+  // ---------------------------------------------------------------------------
+  // Paths — populated incrementally as endpoints are documented.
+  //
+  // operationId registry (stable names → SDK method names via orval/openapi-generator):
+  //
+  //   registerUser          POST   /auth/register
+  //   loginUser             POST   /auth/login
+  //   refreshAccessToken    POST   /auth/refresh
+  //   logoutUser            POST   /auth/logout
+  //   verifyEmail           POST   /auth/verify-email
+  //   resendVerificationEmail POST /auth/resend-verification
+  //   requestPasswordReset  POST   /auth/forgot-password
+  //   resetPassword         POST   /auth/reset-password
+  //   getCurrentUser        GET    /user/me
+  // ---------------------------------------------------------------------------
   paths: {},
 } as const satisfies OpenAPIObject;
 
