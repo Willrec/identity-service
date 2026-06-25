@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DISABLE_ERD: true
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
