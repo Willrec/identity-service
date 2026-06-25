@@ -82,6 +82,13 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
+  async revokeAllUserRefreshTokens(userId: string): Promise<void> {
+    await this.db.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true, revokedAt: new Date() },
+    });
+  }
+
   // ── Email verification ─────────────────────────────────────────────────────
 
   async createEmailVerificationToken(data: CreateEmailVerificationTokenInput): Promise<void> {

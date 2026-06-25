@@ -53,6 +53,11 @@ export class UserService {
     await this.userRepo.markEmailVerified(id, tx);
   }
 
+  async updatePassword(id: string, passwordHash: string, tx?: Prisma.TransactionClient): Promise<void> {
+    await this.getById(id);
+    await this.userRepo.updatePassword(id, passwordHash, tx);
+  }
+
   async assignRole(userId: string, roleName: string, tx?: Prisma.TransactionClient): Promise<void> {
     await this.userRepo.assignRole(userId, roleName, tx);
   }

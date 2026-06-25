@@ -75,6 +75,7 @@ export interface IAuthRepository {
   findRefreshTokenByHash(tokenHash: string): Promise<RefreshTokenData | null>;
   revokeRefreshToken(id: string): Promise<void>;
   revokeAllSessionRefreshTokens(sessionId: string): Promise<void>;
+  revokeAllUserRefreshTokens(userId: string): Promise<void>;
 
   // Email verification
   createEmailVerificationToken(data: CreateEmailVerificationTokenInput): Promise<void>;

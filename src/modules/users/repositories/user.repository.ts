@@ -90,6 +90,14 @@ export class UserRepository implements IUserRepository {
     });
   }
 
+  async updatePassword(id: string, passwordHash: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.user.update({
+      where: { id },
+      data: { passwordHash, updatedAt: new Date() },
+    });
+  }
+
   async assignRole(userId: string, roleName: string, tx?: Prisma.TransactionClient): Promise<void> {
     const client = tx ?? this.db;
     const role = await client.role.findUnique({ where: { name: roleName } });

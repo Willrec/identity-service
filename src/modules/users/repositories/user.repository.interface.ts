@@ -13,6 +13,7 @@ export interface IUserRepository {
   update(id: string, data: UpdateUserDto, tx?: Prisma.TransactionClient): Promise<UserResponseDto>;
   markAsDeleted(id: string, tx?: Prisma.TransactionClient): Promise<void>;
   markEmailVerified(id: string, tx?: Prisma.TransactionClient): Promise<void>;
+  updatePassword(id: string, passwordHash: string, tx?: Prisma.TransactionClient): Promise<void>;
   assignRole(userId: string, roleName: string, tx?: Prisma.TransactionClient): Promise<void>;
   /** Temporary — used by health check to verify DB connectivity via auth.users */
   countUsers(): Promise<number>;

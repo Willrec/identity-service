@@ -115,6 +115,51 @@ async function runTests() {
   const forgotRes3 = await requestAPI('POST', '/auth/forgot-password', { email: 'test_verify@example.com' });
   console.log(forgotRes3.status === 200 ? '✓ Unverified email returns 200' : `✗ Failed (got ${forgotRes3.status})`);
 
+  console.log('\n--- Reset Password Test ---');
+  await prisma.user.update({ where: { email: 'test_verify@example.com' }, data: { emailVerified: true } });
+  
+  const resetToken = tokenService.generateOpaqueToken();
+  await authRepo.createPasswordResetToken({
+    userId: user.id,
+    tokenHash: tokenService.hashToken(resetToken),
+    expiresAt: new Date(Date.now() + 100000)
+  });
+
+  // Also create a dummy session and refresh token to verify they are revoked
+  const testSession = await authRepo.createSession({ userId: user.id, expiresAt: new Date(Date.now() + 100000) });
+  const testRefreshToken = await authRepo.createRefreshToken({
+    userId: user.id,
+    sessionId: testSession.id,
+    tokenHash: 'dummy_hash',
+    expiresAt: new Date(Date.now() + 100000)
+  });
+
+  console.log('\n[13] Invalid reset token returns 400');
+  const resetInvRes = await requestAPI('POST', '/auth/reset-password', { token: 'invalid_token', newPassword: 'NewStrongPassword123!' });
+  console.log(resetInvRes.status === 400 ? '✓ Invalid token rejected (400)' : `✗ Failed (got ${resetInvRes.status})`);
+
+  console.log('\n[14] Valid token resets password');
+  const resetRes = await requestAPI('POST', '/auth/reset-password', { token: resetToken, newPassword: 'NewStrongPassword123!' });
+  console.log(resetRes.status === 200 ? '✓ Valid token resets password (200)' : `✗ Failed (got ${resetRes.status})`);
+
+  console.log('\n[15] Token cannot be reused');
+  const resetReuseRes = await requestAPI('POST', '/auth/reset-password', { token: resetToken, newPassword: 'NewStrongPassword123!' });
+  console.log(resetReuseRes.status === 400 ? '✓ Token reuse rejected (400)' : `✗ Failed (got ${resetReuseRes.status})`);
+
+  // Verify sessions and refresh tokens were revoked
+  const sessionAfter = await prisma.session.findUnique({ where: { id: testSession.id } });
+  const refreshTokenAfter = await prisma.refreshToken.findUnique({ where: { id: testRefreshToken.id } });
+  console.log(sessionAfter?.revoked ? '✓ Session revoked' : '✗ Session not revoked');
+  console.log(refreshTokenAfter?.revoked ? '✓ Refresh token revoked' : '✗ Refresh token not revoked');
+
+  // Verify login with new password works
+  console.log('\n[16] Login with new password');
+  const loginNewPassRes = await requestAPI('POST', '/auth/login', {
+    email: 'test_verify@example.com',
+    password: 'NewStrongPassword123!'
+  });
+  console.log(loginNewPassRes.status === 200 ? '✓ Login with new password successful (200)' : `✗ Failed (got ${loginNewPassRes.status})`);
+
   await prisma.$disconnect();
 }
 

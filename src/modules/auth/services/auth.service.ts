@@ -8,6 +8,7 @@ import type {
   AuthResponseDto,
   AuthTokensDto,
   DeviceInfoDto,
+  ResetPasswordDto,
 } from '../dto/auth.dto.js';
 import type { UserResponseDto } from '../../users/dto/user.dto.js';
 import type { UserService } from '../../users/services/user.service.js';
@@ -253,18 +254,25 @@ export class AuthService {
     return token;
   }
 
-  async resetPassword(rawToken: string, newPassword: string): Promise<void> {
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
     const record = await this.authRepo.findPasswordResetToken(
-      this.tokenService.hashToken(rawToken),
+      this.tokenService.hashToken(dto.token),
     );
     if (!record || record.expiresAt < new Date()) {
       throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
     }
-    const passwordHash = await this.passwordService.hash(newPassword);
-    void passwordHash; // TODO: add updatePassword(id, hash) to IUserRepository
+    const passwordHash = await this.passwordService.hash(dto.newPassword);
+    
+    await this.userService.updatePassword(record.userId, passwordHash);
 
     await this.authRepo.deleteAllUserPasswordResetTokens(record.userId);
     await this.sessionService.revokeAll(record.userId);
+    await this.authRepo.revokeAllUserRefreshTokens(record.userId);
+
+    await this.authRepo.createAuditLog({
+      userId: record.userId,
+      action: 'PASSWORD_RESET_COMPLETED',
+    });
   }
 
   // ── Private ────────────────────────────────────────────────────────────────
