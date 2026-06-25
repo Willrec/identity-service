@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
-import type { OpenAPIObject } from 'openapi-types';
+import type { OpenAPIV3_1 } from 'openapi-types';
 
 // ---------------------------------------------------------------------------
 // Spec — built programmatically; no YAML files or code-gen required.
@@ -9,7 +9,7 @@ import type { OpenAPIObject } from 'openapi-types';
 // additions never require a reorganisation.
 // ---------------------------------------------------------------------------
 
-const components: OpenAPIObject['components'] = {
+const components: OpenAPIV3_1.Document['components'] = {
   // ── Security schemes ───────────────────────────────────────────────────────
   securitySchemes: {
     BearerAuth: {
@@ -437,6 +437,50 @@ const components: OpenAPIObject['components'] = {
         },
       },
     },
+
+    /** Mirrors resendVerificationEmailSchema (auth.validator.ts) */
+    ResendVerificationRequest: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: {
+          type: 'string',
+          format: 'email',
+          description: 'Registered email address to resend verification link.',
+          example: 'john.doe@example.com',
+        },
+      },
+      example: {
+        email: 'john.doe@example.com',
+      },
+    },
+
+    /**
+     * GET /auth/me — 200
+     * Returns the full profile details for the authenticated user.
+     */
+    MeResponse: {
+      type: 'object',
+      required: ['success', 'data'],
+      properties: {
+        success: { type: 'boolean', enum: [true], example: true },
+        data: { $ref: '#/components/schemas/UserResponse' },
+      },
+      example: {
+        success: true,
+        data: {
+          id: '018e1c2d-3f4a-7b8c-9d0e-1f2a3b4c5d6e',
+          email: 'john.doe@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          avatarUrl: null,
+          emailVerified: true,
+          status: 'ACTIVE',
+          createdAt: '2024-01-15T10:30:00.000Z',
+          updatedAt: '2024-06-25T14:00:00.000Z',
+        },
+      },
+    },
   },
 
   // ── Named responses ────────────────────────────────────────────────────────
@@ -540,6 +584,28 @@ const components: OpenAPIObject['components'] = {
         example: 'a1b2c3d4e5f67890abcdef1234567890',
       },
     },
+    /** Cookie containing the CSRF token. Checked by the csrfProtection middleware. */
+    CsrfTokenCookie: {
+      name: 'csrfToken',
+      in: 'cookie',
+      required: true,
+      description: 'CSRF token stored in a cookie. Must match the x-csrf-token header.',
+      schema: {
+        type: 'string',
+        example: 'a1b2c3d4e5f67890abcdef1234567890',
+      },
+    },
+    /** HttpOnly Secure cookie carrying the opaque refresh token. */
+    RefreshTokenCookie: {
+      name: '__Host-refresh',
+      in: 'cookie',
+      required: true,
+      description: 'HttpOnly Secure SameSite=Strict cookie containing the opaque refresh token.',
+      schema: {
+        type: 'string',
+        example: 'eyJhbGciOiJIUzI1NiJ9.refresh.token',
+      },
+    },
   },
 
   // ── Reusable headers ───────────────────────────────────────────────────────
@@ -576,7 +642,7 @@ const components: OpenAPIObject['components'] = {
 // Tags — defined globally so every future endpoint can reference them without
 // redeclaring descriptions.
 // ---------------------------------------------------------------------------
-const tags: OpenAPIObject['tags'] = [
+const tags: OpenAPIV3_1.Document['tags'] = [
   {
     name: 'Auth',
     description: 'Registration, login, logout, and token lifecycle.',
@@ -650,15 +716,281 @@ export const openApiSpec = {
   //   resendVerificationEmail POST /auth/resend-verification
   //   requestPasswordReset  POST   /auth/forgot-password
   //   resetPassword         POST   /auth/reset-password
-  //   getCurrentUser        GET    /user/me
+  //   getCurrentUser        GET    /auth/me
   // ---------------------------------------------------------------------------
-  paths: {},
-} as const satisfies OpenAPIObject;
+  paths: {
+    '/auth/register': {
+      post: {
+        operationId: 'registerUser',
+        summary: 'Register a new user',
+        description:
+          'Registers a new user with their email, password, and name. ' +
+          'Accounts are created with verification required status.',
+        tags: ['Auth'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/RegisterRequest' },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'User registered successfully.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/RegisterResponse' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '409': { $ref: '#/components/responses/ConflictError' },
+        },
+      },
+    },
+    '/auth/login': {
+      post: {
+        operationId: 'loginUser',
+        summary: 'Log in user',
+        description:
+          'Authenticates a user with email and password. Returns a short-lived JWT access token in the JSON body, ' +
+          'and sets HttpOnly cookies for rotating refresh tokens and CSRF protection.',
+        tags: ['Auth'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/LoginRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Login successful. Cookies set.',
+            headers: {
+              'Set-Cookie': {
+                description: 'Sets __Host-refresh (HttpOnly) and csrfToken cookies. See components headers.',
+                schema: { type: 'string' },
+              },
+            },
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/LoginResponse' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/ValidationError' },
+          '401': { $ref: '#/components/responses/UnauthorizedError' },
+        },
+      },
+    },
+    '/auth/refresh': {
+      post: {
+        operationId: 'refreshAccessToken',
+        summary: 'Refresh access token',
+        description:
+          'Rotates the HttpOnly refresh token cookie and issues a new access token. ' +
+          'Requires valid CSRF cookies/headers. Does not use BearerAuth.',
+        tags: ['Auth'],
+        parameters: [
+          { $ref: '#/components/parameters/XCsrfToken' },
+          { $ref: '#/components/parameters/CsrfTokenCookie' },
+          { $ref: '#/components/parameters/RefreshTokenCookie' },
+        ],
+        responses: {
+          '200': {
+            description: 'Token refreshed successfully. Cookies rotated.',
+            headers: {
+              'Set-Cookie': {
+                description: 'Rotates __Host-refresh (HttpOnly) and csrfToken cookies. See components headers.',
+                schema: { type: 'string' },
+              },
+            },
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/RefreshResponse' },
+              },
+            },
+          },
+          '401': { $ref: '#/components/responses/UnauthorizedError' },
+          '403': { $ref: '#/components/responses/ForbiddenError' },
+        },
+      },
+    },
+    '/auth/logout': {
+      post: {
+        operationId: 'logoutUser',
+        summary: 'Log out user',
+        description:
+          'Revokes the refresh token and clears all cookies. Requires valid CSRF cookies/headers. Idempotent.',
+        tags: ['Auth'],
+        parameters: [
+          { $ref: '#/components/parameters/XCsrfToken' },
+          { $ref: '#/components/parameters/CsrfTokenCookie' },
+          {
+            name: '__Host-refresh',
+            in: 'cookie',
+            required: false,
+            description: 'HttpOnly Secure SameSite=Strict cookie containing the opaque refresh token to revoke.',
+            schema: { type: 'string' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Logout successful. Cookies cleared.',
+            headers: {
+              'Set-Cookie': {
+                description: 'Clears __Host-refresh and csrfToken cookies by setting Max-Age=0.',
+                schema: { type: 'string' },
+              },
+            },
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+              },
+            },
+          },
+          '403': { $ref: '#/components/responses/ForbiddenError' },
+        },
+      },
+    },
+    '/auth/verify-email': {
+      post: {
+        operationId: 'verifyEmail',
+        summary: 'Verify email address',
+        description: "Marks the user's email as verified using the token received in their verification link.",
+        tags: ['Auth'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/VerifyEmailRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Email verified successfully.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/ValidationError' },
+        },
+      },
+    },
+    '/auth/resend-verification': {
+      post: {
+        operationId: 'resendVerificationEmail',
+        summary: 'Resend verification email',
+        description: "Sends another email verification link to the user's email if their account is not already verified.",
+        tags: ['Auth'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ResendVerificationRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Verification email sent if account exists and is unverified.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/ValidationError' },
+        },
+      },
+    },
+    '/auth/forgot-password': {
+      post: {
+        operationId: 'requestPasswordReset',
+        summary: 'Request password reset link',
+        description: 'Sends a password reset token via email to the user if the account exists.',
+        tags: ['Auth'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ForgotPasswordRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Password reset link sent if account exists.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/ValidationError' },
+        },
+      },
+    },
+    '/auth/reset-password': {
+      post: {
+        operationId: 'resetPassword',
+        summary: 'Reset password',
+        description: 'Resets the password using a valid reset token.',
+        tags: ['Auth'],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ResetPasswordRequest' },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Password reset successfully.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/ValidationError' },
+        },
+      },
+    },
+    '/auth/me': {
+      get: {
+        operationId: 'getCurrentUser',
+        summary: 'Get current user profile',
+        description: 'Retrieves the profile details of the currently authenticated user. Requires a valid Bearer JWT.',
+        tags: ['User'],
+        security: [{ BearerAuth: [] }],
+        responses: {
+          '200': {
+            description: 'User profile retrieved successfully.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MeResponse' },
+              },
+            },
+          },
+          '401': { $ref: '#/components/responses/UnauthorizedError' },
+          '403': { $ref: '#/components/responses/ForbiddenError' },
+        },
+      },
+    },
+  },
+} as const satisfies OpenAPIV3_1.Document;
 
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
-const docsRouter = Router();
+const docsRouter: Router = Router();
 
 // GET /docs/openapi.json — raw specification
 docsRouter.get('/docs/openapi.json', (_req, res) => {
