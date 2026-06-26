@@ -43,9 +43,11 @@
     "test:db:reset": "npm run test:db:down && npm run test:db:up",
     "env:init": "node scripts/init-env.js",
     "keys:generate": "node scripts/generate-keys.js",
+    "keys:env": "node scripts/keys-env.js",
     "setup": "node scripts/setup.js",
     "seed": "node scripts/seed.js",
-    "doctor": "node scripts/doctor.js"
+    "doctor": "node scripts/doctor.js",
+    "verify": "node scripts/verify.js"
   },
   "dependencies": {
     "@prisma/client": "^6.13.0",
