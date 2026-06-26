@@ -1,9 +1,6 @@
 import crypto from 'node:crypto';
-import jwt from 'jsonwebtoken';
 import type { IAuthRepository, RefreshTokenData } from '../repositories/auth.repository.interface.js';
-import type { TokenPayload } from '../../../shared/types/token-payload.js';
 import type { AuthTokensDto } from '../dto/auth.dto.js';
-import { env } from '../../../config/env.js';
 import { ACCESS_TOKEN_TTL_S, REFRESH_TOKEN_TTL_S } from '../../../config/constants.js';
 
 export class TokenService {
@@ -25,12 +22,6 @@ export class TokenService {
 
   fromNowSeconds(seconds: number): Date {
     return new Date(Date.now() + seconds * 1000);
-  }
-
-  // ── JWT ────────────────────────────────────────────────────────────────────
-
-  signAccessToken(payload: TokenPayload): string {
-    return jwt.sign(payload, env.JWT_ACCESS_SECRET ?? '', { expiresIn: ACCESS_TOKEN_TTL_S });
   }
 
   // ── Refresh tokens ─────────────────────────────────────────────────────────

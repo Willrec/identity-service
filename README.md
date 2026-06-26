@@ -10,121 +10,191 @@ A robust, production-ready, reusable generic **Identity Service** designed to ha
 
 ---
 
-## Core Capabilities
+## Quick Start
 
-The Identity Service provides a comprehensive set of features out of the box:
+Get your environment ready in minutes by following this simple workflow:
 
-### Authentication & Authorization
-*   **Authentication**: Complete user sign-up, email verification, login, password reset, and logout flows.
-*   **Authorization**: Flexible middleware supporting role-based access control (RBAC).
-
-### Token- & Session-Based Security
-*   **Asymmetric JWT signing (RS256)**: Secure access tokens signed using a private RSA key on the server, which can be verified externally with the corresponding public key.
-*   **Secure Session Management**: Track, renew, and revoke active sessions. Supplying a long-lived rotating refresh token (`__Host-refresh` cookie) allows generating new short-lived access tokens.
-*   **CSRF Protection**: Comprehensive Double Submit Cookie validation via custom header (`x-csrf-token`) and secure cookie (`csrfToken`).
-
-### Security Features
-*   **Rate Limiting**: Granular rate limiters configured per endpoint to prevent brute-force attacks and abuse.
-*   **RBAC**: Flexible middleware (`authorize(...roles)`) that checks assigned roles from the database to restrict access dynamically.
-*   **Email Verification**: Account activation workflow using opaque single-use verification tokens.
-*   **Password Reset**: Opaque reset tokens to securely change forgotten passwords.
-
-### Developer Experience & Standards
-*   **OpenAPI 3.1 Specification**: Single source of truth API contract with Swagger UI for local documentation and sandbox testing, coupled with Redocly for linting/validation.
-*   **Docker Integration**: Streamlined containerized local environments for running tests and dependencies seamlessly.
-*   **CI/CD Pipeline**: Integrated GitHub Actions workflows ensuring linting, formatting, type safety, OpenAPI contract validation, and tests pass successfully on every push.
+```text
+git clone
+  ↓
+pnpm install
+  ↓
+pnpm setup   (verifies engine versions, configures .env & generates RSA keys)
+  ↓
+pnpm prisma migrate deploy
+  ↓
+pnpm seed    (populates DB with default roles & initial admin user)
+  ↓
+pnpm dev     (starts local development server)
+```
 
 ---
 
-## Setup & Getting Started
+## Contributor Lifecycle
 
-### Requirements
+The diagram below details the standard contributor workflow from cloning the repository to submitting verified changes to GitHub:
 
-To run this project locally, ensure you have the following installed:
-*   **Node.js**: version `>=22.19.0`
-*   **pnpm**: version `>=9`
-*   **Docker & Docker Compose**: (Recommended for running the test database locally)
-
-### One-Command Setup
-
-The project provides a setup script that automates the verification of Node.js and pnpm versions, installs dependencies, initializes the local `.env` configuration file, generates secure JWT RSA keys, and generates the Prisma database client:
-
-```bash
-pnpm setup
+```mermaid
+graph TD
+    Clone[Clone Repo] --> Install[pnpm install]
+    Install --> Setup[pnpm setup]
+    Setup --> Dev[Local Development / Code Changes]
+    Dev --> Verify[pnpm verify]
+    Verify -- Succeeded --> Push[git push]
+    Push --> CI[GitHub Actions validation]
+    Verify -- Failed --> Fix[Fix Errors]
+    Fix --> Verify
 ```
 
-Once completed, configure the environment variables described below inside your newly created `.env` file before running the service.
+---
 
-### Environment Variables
+## Project Structure & Architecture
 
-The Identity Service requires configuration variables to boot. Run the initialization script to generate your local `.env` configuration file:
+Below is a detailed guide describing the responsibilities of each primary directory in this workspace:
 
-```bash
-pnpm env:init
+### Root Directories
+- [prisma/](./prisma): Houses the database configuration including `schema.prisma` and database migrations.
+- [scripts/](./scripts): Contains utility scripts for environment initialization, cryptography key generation, environment diagnostics (`doctor`), and repository verification pipeline (`verify`).
+- [docs/](./docs): Contains API specifications (OpenAPI 3.1 contract), database entity-relationship diagrams (ERD), and Swagger UI configurations.
+- [tests/](./tests): Contains end-to-end integration and system verification test suites.
+- [generated/](./generated): Output directory for generated artifacts like TypeScript SDK types.
+
+### Application Source Code (`src/`)
+- [src/config/](./src/config): Manages configurations, cookies, constants, and Zod-based environment variable validation.
+- [src/docs/](./src/docs): Registers Swagger documentation endpoints and packages OpenAPI resources.
+- [src/infrastructure/](./src/infrastructure): Manages connection drivers and instances, such as the global Prisma database client.
+- [src/middleware/](./src/middleware): Stores global middleware including error handling, rate limiting, request validation, CORS, and CSRF protection.
+- [src/modules/](./src/modules): Houses the application modules (e.g. Authentication, Sessions, Users) containing their respective controllers, repositories, services, and schemas.
+- [src/routes/](./src/routes): Registers global HTTP endpoints and mounts individual domain routers.
+- [src/shared/](./src/shared): Holds cross-cutting utilities, generic types, and custom helper classes.
+- [src/app.ts](./src/app.ts): Constructs the Express application instance, configures security headers, and applies route bindings.
+- [src/server.ts](./src/server.ts): Launches the HTTP server, connects to databases, and handles OS process signals for graceful shutdown.
+
+---
+
+## Authentication & Cryptographic Flows
+
+The Identity Service processes authentication and security challenges using secure, modern design patterns:
+
+### Registration & Login Flow
+- **Registration**: Collects credentials, verifies if the user exists, hashes passwords with bcrypt, creates the user record, and generates an opaque verification token to send activation emails.
+- **Login**: Verifies credentials, registers a secure session in the database, generates access/refresh tokens, writes the refresh token inside a secure, HTTP-only `__Host-refresh` cookie, and returns the short-lived JWT access token.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Client Application
+    participant API as Identity Service
+    participant DB as PostgreSQL Database
+
+    User->>App: Submits username & password
+    App->>API: POST /api/v1/auth/login
+    API->>DB: Fetch user by email
+    DB-->>API: User details (hashed password)
+    API->>API: Verify password with bcrypt
+    API->>DB: Create session record
+    DB-->>API: Session saved
+    API->>API: Sign JWT Access Token (RS256 Private Key)
+    API->>API: Generate rotating Refresh Token
+    API-->>App: Set __Host-refresh cookie + returns Access Token (JSON)
+    App-->>User: Redirects to authorized dashboard
 ```
 
-A default `.env` will be copied from `.env.example`. Make sure to configure the variables described below inside `.env`:
+### Access Token Refresh Flow
+Access tokens are short-lived. Clients automatically query the `/auth/refresh` endpoint using the `__Host-refresh` cookie to retrieve a new access token without requiring manual credentials.
 
-*   `NODE_ENV`: The server execution environment (`development`, `production`, `test`).
-*   `PORT`: The port the Express HTTP server binds to (default: `3000`).
-*   `DATABASE_URL`: Connection string for PostgreSQL database.
-*   `CORS_ORIGINS`: Comma-separated list of allowed client origins.
-*   `BCRYPT_SALT_ROUNDS`: Number of salt rounds for password hashing.
-*   `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`: 2048-bit RS256 RSA keypair in PEM format (newlines escaped as literal `\n`).
-*   `JWT_ACCESS_TOKEN_EXPIRES_IN`: Expire duration for generated JWTs (e.g. `15m`).
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Client Application
+    participant API as Identity Service
+    participant DB as PostgreSQL Database
 
-### JWT RS256 Key Generation
-
-The service uses asymmetric RS256 signatures for access tokens. You must generate a 2048-bit RSA key pair. Run the key generator script to automatically create these keys:
-
-```bash
-pnpm keys:generate
+    App->>API: POST /api/v1/auth/refresh (includes __Host-refresh cookie)
+    API->>API: Verify refresh token format & CSRF
+    API->>DB: Fetch session matching token
+    DB-->>API: Session found & active
+    API->>DB: Rotate refresh token (revoke old, save new)
+    DB-->>API: Session rotated
+    API->>API: Sign new Access Token (RS256 Private Key)
+    API-->>App: Set new __Host-refresh cookie + returns new Access Token (JSON)
 ```
 
-This generates `private.pem` (private key) and `public.pem` (public key) inside the `keys/` directory (automatically git-ignored).
+### Password Recovery Flow
+Provides an asynchronous challenge-response loop to reset forgotten passwords securely using single-use opaque tokens.
 
-To use these keys in development:
-1. Copy the contents of the generated PEM files.
-2. In your `.env` file, assign the keys to `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY`, making sure to format them on a single line where all newlines are replaced by literal `\n` characters (as shown in `.env.example`).
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Client Application
+    participant API as Identity Service
+    participant DB as PostgreSQL Database
+    participant Email as Email Dispatcher
 
-### Installation
-
-Once environment variables are configured, install project dependencies and generate the database client:
-
-```bash
-# Install packages
-pnpm install
-
-# Generate Prisma DB Client
-pnpm prisma:generate
+    User->>App: Clicks "Forgot Password" & enters email
+    App->>API: POST /api/v1/auth/forgot-password
+    API->>DB: Check email & create reset token
+    DB-->>API: Reset token saved
+    API->>Email: Send reset link with token
+    Email-->>User: User receives email with link
+    User->>App: Accesses link, enters new password
+    App->>API: POST /api/v1/auth/reset-password (token + password)
+    API->>DB: Validate token & update user password (bcrypt)
+    DB-->>API: Password updated
+    API-->>App: Password reset confirmation
+    App-->>User: Prompt to login with new credentials
 ```
 
-### Database Seeding
+---
 
-The service comes with a seeder script that populates the database with default roles (`SUPER_ADMIN`, `ADMIN`, `USER`) and optionally a default administrator user.
+## Environment & Configuration
 
-To seed the database, run:
+### Prerequisites
+- **Node.js**: version `>=22.19.0`
+- **pnpm**: version `>=9`
+- **Docker**: (Recommended for running PostgreSQL and integrations locally)
 
-```bash
-pnpm seed
-```
+### Configuration Variables (`.env`)
+Run `pnpm env:init` to create your initial `.env` file from `.env.example`. Key configuration options include:
+- `PORT`: Binds Express to this port (default: `3000`).
+- `DATABASE_URL`: Connection URI for PostgreSQL database.
+- `CORS_ORIGINS`: Comma-separated list of allowed origins.
+- `BCRYPT_SALT_ROUNDS`: Complexity factor for hashing passwords (must be between `10` and `15`).
+- `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`: 2048-bit RS256 RSA keypair in PEM format (newlines escaped as literal `\n`). Can be automatically managed using `pnpm setup` or `pnpm keys:env`.
+- `SEED_DEFAULT_ADMIN`: If set to `true`, `pnpm seed` will create a default administrator account.
+- `DEFAULT_ADMIN_EMAIL` / `DEFAULT_ADMIN_PASSWORD`: Credentials for the default administrator.
 
-By default, the script only creates the roles. To create a default administrator user, configure the following variables in your `.env` file first:
-*   `SEED_DEFAULT_ADMIN`: Set to `true` to enable.
-*   `DEFAULT_ADMIN_EMAIL`: Email for the administrator account.
-*   `DEFAULT_ADMIN_PASSWORD`: Password for the administrator account.
-*   `DEFAULT_ADMIN_FIRST_NAME`: First name for the administrator.
-*   `DEFAULT_ADMIN_LAST_NAME`: Last name for the administrator.
+---
 
-### Diagnostics Tool
+## CLI Command Reference
 
-The project includes a diagnostics script to analyze your environment and check dependencies, database connections, environment variables, cryptographic keys, and migrations:
+All project commands are categorized below for reference:
 
-```bash
-pnpm doctor
-```
+| Category | Command | Description |
+| :--- | :--- | :--- |
+| **Setup** | `pnpm setup` | Automated project bootstrapper. Validates environment, copies `.env` template, generates RSA keys, configures JWT settings, and builds the Prisma database client. |
+| | `pnpm env:init` | Safely initializes the `.env` configuration file from `.env.example`. Does not overwrite existing settings. |
+| | `pnpm keys:generate` | Generates a new 2048-bit RSA key pair under `keys/` in PEM format. |
+| | `pnpm keys:env` | Formats local PEM keys as single-line strings and injects them directly into the `.env` variables list. |
+| **Development** | `pnpm dev` | Boots the Express development server with file watch and Hot Reloading enabled. |
+| | `pnpm build` | Compiles TypeScript source files into executable Javascript under `dist/`. |
+| | `pnpm start` | Launches the compiled production Javascript application. |
+| | `pnpm lint` | Audits TypeScript source code for stylistic guidelines and patterns using ESLint. |
+| | `pnpm lint:fix` | Runs ESLint and automatically corrects style errors and format alerts. |
+| | `pnpm format` | Runs Prettier to auto-format source files across the codebase. |
+| **Database** | `pnpm prisma:generate` | Builds TypeScript type definitions corresponding to the database models. |
+| | `pnpm prisma:studio` | Launches an interactive database browser client. |
+| | `pnpm seed` | Runs database seeder, creating system roles and default admin credentials. |
+| **Testing** | `pnpm test` | Runs the test suites using Vitest. |
+| | `pnpm test:local` | Automatically provisions a Dockerized test database, deploys migrations, runs Vitest integration tests, and tears down the database container when finished. |
+| | `pnpm test:db:up` | Manually boots the Docker test database container and waits for it to become ready. |
+| | `pnpm test:db:down` | Shuts down the Docker test database container and cleans all associated data volumes. |
+| **OpenAPI** | `pnpm openapi` | Compiles, validates, and builds TypeScript client models using Orval based on the OpenAPI contract. |
+| **Diagnostics** | `pnpm doctor` | Runs diagnostics to ensure system engine versions, databases, migrations, variables, and cryptographic configurations are completely healthy. |
+| | `pnpm verify` | Runs sequential repository checks (`lint` → `build` → `openapi` → `test:local`) to confirm the project is in a push-ready state. |
 
-This command will output a detailed PASS/FAIL report highlighting any setup issues with actionable troubleshooting recommendations.
+---
 
+## License
 
-
+This project is licensed under the [MIT License](./LICENSE).

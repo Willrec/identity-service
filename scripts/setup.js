@@ -9,7 +9,36 @@ const rootDir = path.resolve(__dirname, '..');
 
 console.log('=== Identity Service Project Setup ===\n');
 
-// 1. Verify Node version (>= 22.19.0)
+// 1. Verify project prerequisites before initialization
+const packageJsonExists = fs.existsSync(path.join(rootDir, 'package.json'));
+const nodeModulesExists = fs.existsSync(path.join(rootDir, 'node_modules'));
+let prismaAvailable = false;
+if (nodeModulesExists) {
+  try {
+    prismaAvailable = fs.existsSync(path.join(rootDir, 'node_modules', 'prisma')) || 
+                      fs.existsSync(path.join(rootDir, 'node_modules', '.bin', 'prisma'));
+  } catch (e) {
+    prismaAvailable = false;
+  }
+}
+
+if (!packageJsonExists || !nodeModulesExists || !prismaAvailable) {
+  console.error('❌ Error: Project prerequisites are missing.');
+  if (!packageJsonExists) {
+    console.error('   - package.json is missing in the root directory.');
+  }
+  if (!nodeModulesExists) {
+    console.error('   - node_modules folder is missing. Dependencies must be installed first.');
+  }
+  if (nodeModulesExists && !prismaAvailable) {
+    console.error('   - Prisma CLI is not available in node_modules.');
+  }
+  console.error('\nPlease run the following command to install dependencies before setting up:\n');
+  console.error('   pnpm install\n');
+  process.exit(1);
+}
+
+// 2. Verify Node version (>= 22.19.0)
 const nodeVersion = process.version.substring(1);
 const [nodeMajor, nodeMinor, nodePatch] = nodeVersion.split('.').map(Number);
 if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 19)) {
@@ -18,7 +47,7 @@ if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 19)) {
 }
 console.log(`✓ Node.js version verified: ${process.version}`);
 
-// 2. Verify pnpm version (>= 9)
+// 3. Verify pnpm version (>= 9)
 let pnpmVersion = '';
 try {
   pnpmVersion = execSync('pnpm --version', { encoding: 'utf8' }).trim();
@@ -31,20 +60,10 @@ if (pnpmMajor < 9) {
   console.error(`❌ Error: pnpm version ${pnpmVersion} is not supported. Required: >=9`);
   process.exit(1);
 }
-console.log(`✓ pnpm version verified: ${pnpmVersion}`);
+console.log(`✓ pnpm version verified: ${pnpmVersion}\n`);
 
-// 3. Install dependencies
-console.log('\nInstalling dependencies (pnpm install)...');
-try {
-  execSync('pnpm install', { stdio: 'inherit', cwd: rootDir });
-  console.log('✓ Dependencies installed successfully.');
-} catch (e) {
-  console.error('❌ Error installing dependencies.');
-  process.exit(1);
-}
-
-// 4. Initialize .env
-console.log('\nInitializing environment file (.env)...');
+// 4. Initialize .env if missing
+console.log('Initializing environment file (.env)...');
 try {
   execSync('node scripts/init-env.js', { stdio: 'inherit', cwd: rootDir });
 } catch (e) {
@@ -53,7 +72,7 @@ try {
 }
 
 // 5. Generate RSA keys if missing
-console.log('\nChecking JWT RSA keys...');
+console.log('\nChecking/generating RSA keys...');
 try {
   execSync('node scripts/generate-keys.js', { stdio: 'inherit', cwd: rootDir });
 } catch (e) {
@@ -61,7 +80,16 @@ try {
   process.exit(1);
 }
 
-// 6. Run prisma generate
+// 6. Inject/configure keys in .env
+console.log('\nConfiguring JWT keys in .env...');
+try {
+  execSync('node scripts/keys-env.js', { stdio: 'inherit', cwd: rootDir });
+} catch (e) {
+  console.error('❌ Error configuring JWT keys in .env.');
+  process.exit(1);
+}
+
+// 7. Generate Prisma Client
 console.log('\nGenerating Prisma client...');
 try {
   execSync('pnpm prisma:generate', { stdio: 'inherit', cwd: rootDir });
@@ -71,11 +99,10 @@ try {
   process.exit(1);
 }
 
-// 7. Validate environment
+// 8. Validate environment variables
 console.log('\nValidating environment variables...');
 try {
-  // Run a sub-process loading the .env file and importing env.ts via tsx
-  execSync('node --env-file=.env --import tsx/esm -e "import(\'./src/config/env.js\')"', {
+  execSync('node --env-file=.env --import tsx/esm -e "import(\'./src/config/env.ts\')"', {
     stdio: 'inherit',
     cwd: rootDir,
   });
@@ -85,10 +112,18 @@ try {
   process.exit(1);
 }
 
-console.log('\n=========================================');
-console.log('🎉 Setup Completed Successfully!');
-console.log('=========================================');
-console.log('The Identity Service is ready for development.');
-console.log('To start the development server, run:');
-console.log('  pnpm dev');
-console.log('=========================================');
+// 9. Output formatted UX Summary
+console.log('\n────────────────────────────────────');
+console.log('✓ Environment initialized');
+console.log('✓ RSA keys generated');
+console.log('✓ JWT keys configured');
+console.log('✓ Prisma Client generated');
+console.log('\nNext steps:');
+console.log('1. Configure DATABASE_URL (if using an external DB)');
+console.log('2. Run database migrations:');
+console.log('   pnpm prisma migrate deploy');
+console.log('3. Seed the database:');
+console.log('   pnpm seed');
+console.log('4. Start the server:');
+console.log('   pnpm dev');
+console.log('────────────────────────────────────\n');

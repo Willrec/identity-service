@@ -11,7 +11,7 @@ const rootDir = path.resolve(__dirname, '..');
 function loadEnvFile(envPath) {
   if (!fs.existsSync(envPath)) return false;
   const content = fs.readFileSync(envPath, 'utf8');
-  for (const line of content.split('\n')) {
+  for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
     const match = trimmed.match(/^([^=]+)=(.*)$/);
@@ -33,8 +33,8 @@ function loadEnvFile(envPath) {
 async function runDiagnostics() {
   console.log('=== Identity Service Diagnostics ===\n');
 
-  const results = [];
-  let overallPass = true;
+  const criticalChecks = [];
+  const optionalChecks = [];
 
   // Load .env
   const envPath = path.join(rootDir, '.env');
@@ -44,12 +44,11 @@ async function runDiagnostics() {
   const nodeVer = process.version;
   const [nodeMajor, nodeMinor] = nodeVer.substring(1).split('.').map(Number);
   const nodePass = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 19);
-  results.push({
+  criticalChecks.push({
     name: 'Node.js Version',
     pass: nodePass,
     message: nodePass ? `v${nodeVer.substring(1)}` : `Version ${nodeVer} is not supported. Required: >=22.19.0`,
   });
-  if (!nodePass) overallPass = false;
 
   // 2. pnpm Version Check
   let pnpmVer = '';
@@ -59,34 +58,20 @@ async function runDiagnostics() {
     const [pnpmMajor] = pnpmVer.split('.').map(Number);
     pnpmPass = pnpmMajor >= 9;
   } catch (e) {}
-  results.push({
+  criticalChecks.push({
     name: 'pnpm Version',
     pass: pnpmPass,
     message: pnpmPass ? pnpmVer : `pnpm is either missing or unsupported (version: ${pnpmVer || 'unknown'}). Required: >=9`,
   });
-  if (!pnpmPass) overallPass = false;
 
-  // 3. Docker Availability Check
-  let dockerPass = false;
-  try {
-    execSync('docker info', { stdio: 'ignore' });
-    dockerPass = true;
-  } catch (e) {}
-  results.push({
-    name: 'Docker Availability',
-    pass: dockerPass,
-    message: dockerPass ? 'Docker daemon is running' : 'Docker is not running or not installed. Local test runner requires Docker.',
-  });
-  // Note: Docker is recommended, but not strictly failing overall status if not running since we can use external DBs
-
-  // 4. Required Environment Variables (.env check)
+  // 3. Required Environment Variables (.env check)
   let envPass = false;
   let envMessage = '';
   if (!envExists) {
     envMessage = 'Missing .env file. Run "pnpm env:init" to create one.';
   } else {
     try {
-      execSync('node --import tsx/esm -e "import(\'./src/config/env.js\')"', {
+      execSync('node --import tsx/esm -e "import(\'./src/config/env.ts\')"', {
         env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -96,24 +81,22 @@ async function runDiagnostics() {
       envMessage = err.stderr ? err.stderr.toString().trim() : err.message;
     }
   }
-  results.push({
+  criticalChecks.push({
     name: 'Required Environment Variables',
     pass: envPass,
     message: envMessage,
   });
-  if (!envPass) overallPass = false;
 
-  // 5. DATABASE_URL presence
+  // 4. DATABASE_URL presence
   const dbUrl = process.env.DATABASE_URL;
   const dbUrlPass = !!dbUrl && dbUrl.startsWith('postgresql://');
-  results.push({
+  criticalChecks.push({
     name: 'DATABASE_URL format',
     pass: dbUrlPass,
     message: dbUrlPass ? 'Defined and matches postgresql:// format' : 'Missing or invalid DATABASE_URL. Must start with postgresql://',
   });
-  if (!dbUrlPass) overallPass = false;
 
-  // 6. JWT RSA Keys Verification
+  // 5. JWT RSA Keys Verification
   let keysPass = false;
   let keysMessage = '';
   const privateKey = process.env.JWT_PRIVATE_KEY;
@@ -139,14 +122,13 @@ async function runDiagnostics() {
       keysMessage = `Invalid key format: ${err.message}`;
     }
   }
-  results.push({
+  criticalChecks.push({
     name: 'JWT RSA Keys',
     pass: keysPass,
     message: keysMessage,
   });
-  if (!keysPass) overallPass = false;
 
-  // 7. Prisma Client Check
+  // 6. Prisma Client Check
   let prismaPass = false;
   let prismaMessage = '';
   let PrismaClientConstructor;
@@ -158,14 +140,13 @@ async function runDiagnostics() {
   } catch (err) {
     prismaMessage = 'Prisma Client is not generated. Run "pnpm prisma:generate".';
   }
-  results.push({
+  criticalChecks.push({
     name: 'Prisma Client',
     pass: prismaPass,
     message: prismaMessage,
   });
-  if (!prismaPass) overallPass = false;
 
-  // 8 & 9. DB Connection and Pending Migrations Checks (only run if Prisma Client and DB URL are OK)
+  // 7 & 8. DB Connection and Pending Migrations Checks (only run if Prisma Client and DB URL are OK)
   let dbConnPass = false;
   let dbConnMessage = 'Skipped due to prior errors';
   let migrationPass = false;
@@ -207,36 +188,144 @@ async function runDiagnostics() {
     }
   }
 
-  results.push({
+  criticalChecks.push({
     name: 'PostgreSQL Connectivity',
     pass: dbConnPass,
     message: dbConnMessage,
   });
-  if (!dbConnPass) overallPass = false;
 
-  results.push({
+  criticalChecks.push({
     name: 'Pending Migrations',
     pass: migrationPass,
     message: migrationMessage,
   });
-  if (!migrationPass) overallPass = false;
 
-  // Display results
-  for (const res of results) {
-    const status = res.pass ? '✓' : '✗';
-    console.log(`${status} ${res.name}: ${res.message}`);
+  // OPTIONAL CHECKS:
+  // 1. Docker Engine Check
+  let dockerPass = false;
+  let dockerMessage = '';
+  try {
+    execSync('docker info', { stdio: 'ignore' });
+    dockerPass = true;
+    dockerMessage = 'Docker daemon is running';
+  } catch (e) {
+    dockerMessage = 'Docker is not running or not installed. Local test runner requires Docker.';
+  }
+  optionalChecks.push({
+    name: 'Docker Engine',
+    pass: dockerPass,
+    message: dockerMessage,
+  });
+
+  // 2. Docker Compose Check
+  let composePass = false;
+  let composeMessage = '';
+  try {
+    execSync('docker compose version', { stdio: 'ignore' });
+    composePass = true;
+    composeMessage = 'Docker Compose is available';
+  } catch (e) {
+    try {
+      execSync('docker-compose --version', { stdio: 'ignore' });
+      composePass = true;
+      composeMessage = 'Docker Compose (legacy v1) is available';
+    } catch (err) {
+      composeMessage = 'Docker Compose is not available. Required for "pnpm test:local".';
+    }
+  }
+  optionalChecks.push({
+    name: 'Docker Compose',
+    pass: composePass,
+    message: composeMessage,
+  });
+
+  // 3. Git Check
+  let gitPass = false;
+  let gitMessage = '';
+  try {
+    const gitVer = execSync('git --version', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    gitPass = true;
+    gitMessage = gitVer;
+  } catch (e) {
+    gitMessage = 'Git is not installed. Recommended for repository workflows.';
+  }
+  optionalChecks.push({
+    name: 'Git Installation',
+    pass: gitPass,
+    message: gitMessage,
+  });
+
+  // 4. OpenAPI spec existence
+  const openapiPath = path.join(rootDir, 'docs', 'openapi', 'openapi.json');
+  const openapiPass = fs.existsSync(openapiPath);
+  optionalChecks.push({
+    name: 'OpenAPI Spec File',
+    pass: openapiPass,
+    message: openapiPass ? 'docs/openapi/openapi.json exists' : 'OpenAPI spec file not found. Run "pnpm openapi" to build.',
+  });
+
+  // 5. Orval CLI Check
+  let orvalPass = false;
+  let orvalMessage = '';
+  try {
+    const orvalInNodeModules = fs.existsSync(path.join(rootDir, 'node_modules', 'orval'));
+    if (orvalInNodeModules) {
+      orvalPass = true;
+      orvalMessage = 'Orval package is installed in node_modules';
+    } else {
+      execSync('npx orval --version', { stdio: 'ignore' });
+      orvalPass = true;
+      orvalMessage = 'Orval CLI is available globally via npx';
+    }
+  } catch (e) {
+    orvalMessage = 'Orval CLI is not available. Required for openapi types generation.';
+  }
+  optionalChecks.push({
+    name: 'Orval CLI',
+    pass: orvalPass,
+    message: orvalMessage,
+  });
+
+  // Display Critical results
+  console.log('CRITICAL CHECKS:');
+  let criticalFailed = false;
+  for (const res of criticalChecks) {
+    if (res.pass) {
+      console.log(`  \x1b[32m✓\x1b[0m ${res.name}: ${res.message}`);
+    } else {
+      console.log(`  \x1b[31m✗\x1b[0m ${res.name}: ${res.message}`);
+      criticalFailed = true;
+    }
+  }
+
+  // Display Optional results
+  console.log('\nOPTIONAL CHECKS:');
+  let optionalFailed = false;
+  for (const res of optionalChecks) {
+    if (res.pass) {
+      console.log(`  \x1b[32m✓\x1b[0m ${res.name}: ${res.message}`);
+    } else {
+      console.log(`  \x1b[33m⚠\x1b[0m ${res.name}: ${res.message}`);
+      optionalFailed = true;
+    }
   }
 
   console.log('\n=========================================');
-  if (overallPass) {
-    console.log('Status: PASS');
-    console.log('Project is healthy and ready!');
-  } else {
-    console.log('Status: FAIL');
-    console.log('Please resolve the failing checks listed above.');
+  if (criticalFailed) {
+    console.log('\x1b[31mStatus: FAIL\x1b[0m');
+    console.log('Please resolve the failing critical checks listed above.');
+    console.log('=========================================');
     process.exit(1);
+  } else {
+    console.log('\x1b[32mStatus: PASS\x1b[0m');
+    if (optionalFailed) {
+      console.log('Project is healthy, but some optional tools are missing.');
+    } else {
+      console.log('Project is completely healthy and ready!');
+    }
+    console.log('=========================================');
+    process.exit(0);
   }
-  console.log('=========================================');
 }
 
 runDiagnostics().catch((err) => {

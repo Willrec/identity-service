@@ -1,23 +1,27 @@
 import fs from 'fs';
-import path from 'path';
 import { fileURLToPath } from 'url';
+import { dirname, resolve, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
+const rootDir = resolve(__dirname, '..');
 
-// Project root is one level up from scripts/
-const rootDir = path.resolve(__dirname, '..');
-const src = path.join(rootDir, '.env.example');
-const dest = path.join(rootDir, '.env');
+function initFile(srcName, destName) {
+  const src = join(rootDir, srcName);
+  const dest = join(rootDir, destName);
 
-if (fs.existsSync(dest)) {
-  console.log(`.env already exists. Skipping initialization to prevent overwriting.`);
-} else {
-  try {
-    fs.copyFileSync(src, dest);
-    console.log(`Successfully initialized .env from .env.example`);
-  } catch (err) {
-    console.error(`Failed to initialize .env:`, err.message);
-    process.exit(1);
+  if (fs.existsSync(dest)) {
+    console.log(`${destName} already exists. Skipping initialization to prevent overwriting.`);
+  } else {
+    try {
+      fs.copyFileSync(src, dest);
+      console.log(`Successfully initialized ${destName} from ${srcName}`);
+    } catch (err) {
+      console.error(`Failed to initialize ${destName}:`, err.message);
+      process.exit(1);
+    }
   }
 }
+
+initFile('.env.example', '.env');
+initFile('.env.test.example', '.env.test');
