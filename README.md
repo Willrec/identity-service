@@ -53,22 +53,22 @@ graph TD
 Below is a detailed guide describing the responsibilities of each primary directory in this workspace:
 
 ### Root Directories
-- [prisma/](file:///c:/Users/elizo/Documents/Elevo/identity-service/prisma): Houses the database configuration including `schema.prisma` and database migrations.
-- [scripts/](file:///c:/Users/elizo/Documents/Elevo/identity-service/scripts): Contains utility scripts for environment initialization, cryptography key generation, environment diagnostics (`doctor`), and repository verification pipeline (`verify`).
-- [docs/](file:///c:/Users/elizo/Documents/Elevo/identity-service/docs): Contains API specifications (OpenAPI 3.1 contract), database entity-relationship diagrams (ERD), and Swagger UI configurations.
-- [tests/](file:///c:/Users/elizo/Documents/Elevo/identity-service/tests): Contains end-to-end integration and system verification test suites.
-- [generated/](file:///c:/Users/elizo/Documents/Elevo/identity-service/generated): Output directory for generated artifacts like TypeScript SDK types.
+- [prisma/](./prisma): Houses the database configuration including `schema.prisma` and database migrations.
+- [scripts/](./scripts): Contains utility scripts for environment initialization, cryptography key generation, environment diagnostics (`doctor`), and repository verification pipeline (`verify`).
+- [docs/](./docs): Contains API specifications (OpenAPI 3.1 contract), database entity-relationship diagrams (ERD), and Swagger UI configurations.
+- [tests/](./tests): Contains end-to-end integration and system verification test suites.
+- [generated/](./generated): Output directory for generated artifacts like TypeScript SDK types.
 
 ### Application Source Code (`src/`)
-- [src/config/](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/config): Manages configurations, cookies, constants, and Zod-based environment variable validation.
-- [src/docs/](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/docs): Registers Swagger documentation endpoints and packages OpenAPI resources.
-- [src/infrastructure/](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/infrastructure): Manages connection drivers and instances, such as the global Prisma database client.
-- [src/middleware/](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/middleware): Stores global middleware including error handling, rate limiting, request validation, CORS, and CSRF protection.
-- [src/modules/](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/modules): Houses the application modules (e.g. Authentication, Sessions, Users) containing their respective controllers, repositories, services, and schemas.
-- [src/routes/](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/routes): Registers global HTTP endpoints and mounts individual domain routers.
-- [src/shared/](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/shared): Holds cross-cutting utilities, generic types, and custom helper classes.
-- [src/app.ts](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/app.ts): Constructs the Express application instance, configures security headers, and applies route bindings.
-- [src/server.ts](file:///c:/Users/elizo/Documents/Elevo/identity-service/src/server.ts): Launches the HTTP server, connects to databases, and handles OS process signals for graceful shutdown.
+- [src/config/](./src/config): Manages configurations, cookies, constants, and Zod-based environment variable validation.
+- [src/docs/](./src/docs): Registers Swagger documentation endpoints and packages OpenAPI resources.
+- [src/infrastructure/](./src/infrastructure): Manages connection drivers and instances, such as the global Prisma database client.
+- [src/middleware/](./src/middleware): Stores global middleware including error handling, rate limiting, request validation, CORS, and CSRF protection.
+- [src/modules/](./src/modules): Houses the application modules (e.g. Authentication, Sessions, Users) containing their respective controllers, repositories, services, and schemas.
+- [src/routes/](./src/routes): Registers global HTTP endpoints and mounts individual domain routers.
+- [src/shared/](./src/shared): Holds cross-cutting utilities, generic types, and custom helper classes.
+- [src/app.ts](./src/app.ts): Constructs the Express application instance, configures security headers, and applies route bindings.
+- [src/server.ts](./src/server.ts): Launches the HTTP server, connects to databases, and handles OS process signals for graceful shutdown.
 
 ---
 
@@ -197,4 +197,4 @@ All project commands are categorized below for reference:
 
 ## License
 
-This project is licensed under the [MIT License](file:///c:/Users/elizo/Documents/Elevo/identity-service/LICENSE).
+This project is licensed under the [MIT License](./LICENSE).
