@@ -193,6 +193,82 @@ All project commands are categorized below for reference:
 | **Diagnostics** | `pnpm doctor` | Runs diagnostics to ensure system engine versions, databases, migrations, variables, and cryptographic configurations are completely healthy. |
 | | `pnpm verify` | Runs sequential repository checks (`lint` → `build` → `openapi` → `test:local`) to confirm the project is in a push-ready state. |
 
+## OpenAPI Versioning & Consumers
+
+The OpenAPI specification (`docs/openapi/openapi.json`) serves as the official public contract for this Identity Service. External applications, frontends, and integrations must consume the published OpenAPI contract instead of copying generated SDK files.
+
+---
+
+### OpenAPI Versioning Policy
+
+#### Semantic Versioning
+The OpenAPI contract follows the same Semantic Version (SemVer) as the Identity Service release:
+```text
+Identity Service v1.0.0   ➔   OpenAPI Contract v1.0.0   ➔   SDK generated from v1.0.0
+Identity Service v1.1.0   ➔   OpenAPI Contract v1.1.0   ➔   SDK generated from v1.1.0
+```
+
+#### Release Ownership & Immutability
+Every GitHub Release owns exactly one immutable OpenAPI contract. Each release publishes two official assets:
+* `openapi.json` (the API specification)
+* `openapi.json.sha256` (the integrity verification checksum)
+
+Once a release is published, its contract is locked and **must never be regenerated or replaced**. Historical releases remain strictly immutable.
+
+#### Consumer Responsibility
+Consumer applications are responsible for selecting which released contract version they consume:
+```text
+Choose Release Version ➔ Download openapi.json ➔ Verify SHA256 ➔ Generate SDK locally ➔ Compile application
+```
+The backend owns the contract specification; the consumers own their local SDK generation.
+
+#### CI vs Release Workflow Responsibilities
+* **Workflow Artifacts**: Generated for every push to `main`, intended for CI test suite validation, and temporary.
+* **Release Assets**: Generated only for official releases, immutable, official public API contracts, and intended for external consumers.
+
+#### Compatibility Policy
+We guarantee the following contract compatibility rules:
+* **PATCH**: Bug fixes only. No contract-breaking changes.
+* **MINOR**: Backward-compatible additions (e.g., new endpoints, new optional fields).
+* **MAJOR**: Breaking contract changes (e.g., removed endpoints, renamed fields, incompatible request/response schemas).
+
+---
+
+### Consumer Integration Workflow Example
+
+To integrate with the Identity Service (e.g., version `v1.2.0`), external consumer applications should follow this pipeline:
+
+```text
+Identity Service Release v1.2.0
+              ↓
+   Download openapi.json & checksum
+              ↓
+       Verify checksum
+              ↓
+     Generate local SDK / Hooks
+              ↓
+       Build frontend
+```
+
+1. **Download the contract and checksum**:
+   Fetch the files corresponding to the chosen version (e.g., `v1.2.0`) from the GitHub Releases:
+   ```bash
+   wget https://github.com/owner/repo/releases/download/v1.2.0/openapi.json
+   wget https://github.com/owner/repo/releases/download/v1.2.0/openapi.json.sha256
+   ```
+
+2. **Verify contract integrity**:
+   Assert that the downloaded contract matches the published checksum to detect transit corruption or tampering:
+   ```bash
+   sha256sum -c openapi.json.sha256
+   ```
+
+3. **Generate local SDK / client hooks**:
+   Run your local code-generator (e.g., Orval or Swagger Codegen) using the verified `openapi.json` file as input:
+   ```bash
+   pnpm openapi
+   ```
+
 ---
 
 ## License
