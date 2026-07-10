@@ -1,0 +1,68 @@
+name: Publish OpenAPI Contract
+
+on:
+  push:
+    branches:
+      - main
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build & Publish Contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.x
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate OpenAPI Contract
+        run: pnpm openapi
+
+      - name: Verify Contract Exists
+        run: |
+          if [ ! -f docs/openapi/openapi.json ]; then
+            echo "Error: docs/openapi/openapi.json was not generated."
+            exit 1
+          fi
+
+      - name: Generate SHA256 Checksum
+        run: |
+          cd docs/openapi
+          sha256sum openapi.json > openapi.json.sha256
+          echo "Generated SHA256 Checksum:"
+          cat openapi.json.sha256
+
+      - name: Upload Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: identity-service-openapi
+          path: |
+            docs/openapi/openapi.json
+            docs/openapi/openapi.json.sha256
+          retention-days: 90
+
+      - name: Upload Release Asset
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            docs/openapi/openapi.json
+            docs/openapi/openapi.json.sha256
