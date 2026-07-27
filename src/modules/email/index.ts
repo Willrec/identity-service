@@ -9,3 +9,5 @@ export { WelcomeTemplate } from './application/templates/welcome.template.js';
 export type { ITemplateRenderer } from './application/contracts/template-renderer.interface.js';
 export { EmailService } from './application/services/email.service.js';
 export type { SendEmailCommand, SendOptions } from './application/services/email.service.js';
+
+export { EmailDispatchError } from './errors/email-dispatch.error.js';
