@@ -17,6 +17,9 @@ import type { SessionService } from './session.service.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 import { EMAIL_VERIFY_TOKEN_TTL_S, RESET_TOKEN_TTL_S } from '../../../config/constants.js';
 import type { INotificationService } from '../../notifications/services/notification.service.js';
+import { VerifyEmailTemplate } from '../../email/index.js';
+import type { EmailService } from '../../email/index.js';
+import { logger } from '../../../shared/logger.js';
 
 export class AuthService {
   constructor(
@@ -26,6 +29,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly notificationService: INotificationService,
+    private readonly emailService: EmailService,
     private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
   ) { }
 
@@ -58,7 +62,14 @@ export class AuthService {
 
     if (!user.emailVerified) {
       const token = await this.issueEmailVerificationToken(user.id);
-      await this.notificationService.sendVerificationEmail({ id: user.id, email: user.email }, token);
+      try {
+        await this.emailService.sendTemplateEmail({
+          to: user.email,
+          template: new VerifyEmailTemplate(user.email, token),
+        });
+      } catch (error) {
+        logger.error({ err: error, userId: user.id }, 'Verification email dispatch failed during registration');
+      }
     }
 
     return { id: user.id, email: user.email, status: user.status };
