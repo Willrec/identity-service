@@ -67,7 +67,7 @@ export interface IAuthRepository {
   createSession(data: CreateSessionInput): Promise<SessionData>;
   findSessionById(id: string): Promise<SessionData | null>;
   revokeSession(id: string): Promise<void>;
-  revokeAllUserSessions(userId: string): Promise<void>;
+  revokeAllUserSessions(userId: string, tx?: Prisma.TransactionClient): Promise<void>;
   touchSession(id: string, lastSeenAt: Date): Promise<void>;
 
   // Refresh tokens
@@ -75,7 +75,7 @@ export interface IAuthRepository {
   findRefreshTokenByHash(tokenHash: string): Promise<RefreshTokenData | null>;
   revokeRefreshToken(id: string): Promise<void>;
   revokeAllSessionRefreshTokens(sessionId: string): Promise<void>;
-  revokeAllUserRefreshTokens(userId: string): Promise<void>;
+  revokeAllUserRefreshTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void>;
 
   // Email verification
   createEmailVerificationToken(data: CreateEmailVerificationTokenInput, tx?: Prisma.TransactionClient): Promise<void>;
@@ -85,8 +85,8 @@ export interface IAuthRepository {
 
   // Password reset
   createPasswordResetToken(data: CreatePasswordResetTokenInput, tx?: Prisma.TransactionClient): Promise<void>;
-  findPasswordResetToken(tokenHash: string): Promise<{ id: string; userId: string; expiresAt: Date } | null>;
-  deletePasswordResetToken(id: string): Promise<void>;
+  findPasswordResetToken(tokenHash: string, tx?: Prisma.TransactionClient): Promise<{ id: string; userId: string; expiresAt: Date } | null>;
+  deletePasswordResetToken(id: string, tx?: Prisma.TransactionClient): Promise<void>;
   deleteAllUserPasswordResetTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void>;
 
   // Audit log

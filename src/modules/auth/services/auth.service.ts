@@ -292,23 +292,39 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const record = await this.authRepo.findPasswordResetToken(
-      this.tokenService.hashToken(dto.token),
-    );
-    if (!record || record.expiresAt < new Date()) {
-      throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
-    }
+    // 1. CPU-bound hashing occurs outside the database transaction
     const passwordHash = await this.passwordService.hash(dto.newPassword);
-    
-    await this.userService.updatePassword(record.userId, passwordHash);
+    const hashedToken = this.tokenService.hashToken(dto.token);
 
-    await this.authRepo.deleteAllUserPasswordResetTokens(record.userId);
-    await this.sessionService.revokeAll(record.userId);
-    await this.authRepo.revokeAllUserRefreshTokens(record.userId);
+    // 2. Database transaction boundary
+    await prisma.$transaction(async (tx) => {
+      // Validate token state
+      const record = await this.authRepo.findPasswordResetToken(hashedToken, tx);
+      if (!record || record.expiresAt < new Date()) {
+        throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
+      }
 
-    await this.authRepo.createAuditLog({
-      userId: record.userId,
-      action: 'PASSWORD_RESET_COMPLETED',
+      // Validate user eligibility (silent error to prevent enumeration)
+      const user = await this.userService.getRawById(record.userId, tx);
+      if (!user || user.status !== 'ACTIVE') {
+        throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
+      }
+
+      // Update password hash
+      await this.userService.updatePassword(record.userId, passwordHash, tx);
+
+      // Invalidate/delete the password reset token
+      await this.authRepo.deletePasswordResetToken(record.id, tx);
+
+      // Invalidate all user sessions and refresh tokens
+      await this.sessionService.revokeAll(record.userId, tx);
+      await this.authRepo.revokeAllUserRefreshTokens(record.userId, tx);
+
+      // Record audit log
+      await this.authRepo.createAuditLog({
+        userId: record.userId,
+        action: 'PASSWORD_RESET_COMPLETED',
+      }, tx);
     });
   }
 }

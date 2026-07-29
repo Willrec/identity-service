@@ -40,8 +40,9 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-  async revokeAllUserSessions(userId: string): Promise<void> {
-    await this.db.session.updateMany({
+  async revokeAllUserSessions(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.session.updateMany({
       where: { userId, revoked: false },
       data: { revoked: true, revokedAt: new Date() },
     });
@@ -82,8 +83,9 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-  async revokeAllUserRefreshTokens(userId: string): Promise<void> {
-    await this.db.refreshToken.updateMany({
+  async revokeAllUserRefreshTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.refreshToken.updateMany({
       where: { userId, revoked: false },
       data: { revoked: true, revokedAt: new Date() },
     });
@@ -136,15 +138,18 @@ export class AuthRepository implements IAuthRepository {
 
   async findPasswordResetToken(
     tokenHash: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<{ id: string; userId: string; expiresAt: Date } | null> {
-    return this.db.passwordResetToken.findFirst({
+    const client = tx ?? this.db;
+    return client.passwordResetToken.findFirst({
       where: { tokenHash },
       select: { id: true, userId: true, expiresAt: true },
     });
   }
 
-  async deletePasswordResetToken(id: string): Promise<void> {
-    await this.db.passwordResetToken.delete({ where: { id } });
+  async deletePasswordResetToken(id: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.passwordResetToken.delete({ where: { id } });
   }
 
   async deleteAllUserPasswordResetTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void> {

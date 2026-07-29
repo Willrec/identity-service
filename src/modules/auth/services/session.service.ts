@@ -1,4 +1,5 @@
 import type { IAuthRepository, SessionData } from '../repositories/auth.repository.interface.js';
+import type { Prisma } from '@prisma/client';
 import type { DeviceInfoDto } from '../dto/auth.dto.js';
 import { REFRESH_TOKEN_TTL_S } from '../../../config/constants.js';
 
@@ -25,8 +26,8 @@ export class SessionService {
     return this.authRepo.revokeSession(id);
   }
 
-  async revokeAll(userId: string): Promise<void> {
-    return this.authRepo.revokeAllUserSessions(userId);
+  async revokeAll(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    return this.authRepo.revokeAllUserSessions(userId, tx);
   }
 
   async touch(id: string, lastSeenAt = new Date()): Promise<void> {
