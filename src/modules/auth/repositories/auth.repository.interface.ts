@@ -79,8 +79,8 @@ export interface IAuthRepository {
 
   // Email verification
   createEmailVerificationToken(data: CreateEmailVerificationTokenInput): Promise<void>;
-  findEmailVerificationToken(tokenHash: string): Promise<{ id: string; userId: string; expiresAt: Date } | null>;
-  deleteEmailVerificationToken(id: string): Promise<void>;
+  findEmailVerificationToken(tokenHash: string, tx?: Prisma.TransactionClient): Promise<{ id: string; userId: string; expiresAt: Date } | null>;
+  deleteEmailVerificationToken(id: string, tx?: Prisma.TransactionClient): Promise<void>;
   deleteAllUserEmailVerificationTokens(userId: string): Promise<void>;
 
   // Password reset

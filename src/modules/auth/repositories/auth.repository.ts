@@ -99,15 +99,18 @@ export class AuthRepository implements IAuthRepository {
 
   async findEmailVerificationToken(
     tokenHash: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<{ id: string; userId: string; expiresAt: Date } | null> {
-    return this.db.emailVerificationToken.findFirst({
+    const client = tx ?? this.db;
+    return client.emailVerificationToken.findFirst({
       where: { tokenHash },
       select: { id: true, userId: true, expiresAt: true },
     });
   }
 
-  async deleteEmailVerificationToken(id: string): Promise<void> {
-    await this.db.emailVerificationToken.delete({ where: { id } });
+  async deleteEmailVerificationToken(id: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.emailVerificationToken.delete({ where: { id } });
   }
 
   async deleteAllUserEmailVerificationTokens(userId: string): Promise<void> {

@@ -201,24 +201,26 @@ export class AuthService {
   }
 
   async verifyEmail(rawToken: string): Promise<void> {
-    const record = await this.authRepo.findEmailVerificationToken(
-      this.tokenService.hashToken(rawToken),
-    );
-    if (!record || record.expiresAt < new Date()) {
-      throw HttpError.BadRequest('Invalid or expired token', 'INVALID_VERIFICATION_TOKEN');
-    }
+    const hashed = this.tokenService.hashToken(rawToken);
 
-    const user = await this.userService.getRawById(record.userId);
-    if (user && user.emailVerified) {
-      throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
-    }
+    await prisma.$transaction(async (tx) => {
+      const record = await this.authRepo.findEmailVerificationToken(hashed, tx);
+      if (!record || record.expiresAt < new Date()) {
+        throw HttpError.BadRequest('Invalid or expired token', 'INVALID_VERIFICATION_TOKEN');
+      }
 
-    await this.userService.markEmailVerified(record.userId);
-    await this.authRepo.deleteEmailVerificationToken(record.id);
+      const user = await this.userService.getRawById(record.userId, tx);
+      if (user && user.emailVerified) {
+        throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
+      }
 
-    await this.authRepo.createAuditLog({
-      userId: record.userId,
-      action: 'EMAIL_VERIFIED',
+      await this.userService.markEmailVerified(record.userId, tx);
+      await this.authRepo.deleteEmailVerificationToken(record.id, tx);
+
+      await this.authRepo.createAuditLog({
+        userId: record.userId,
+        action: 'EMAIL_VERIFIED',
+      }, tx);
     });
   }
 
