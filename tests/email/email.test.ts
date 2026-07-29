@@ -11,21 +11,21 @@ describe('Email Module Unit Tests', () => {
   describe('Email Templates', () => {
     it('VerifyEmailTemplate should generate subject and contain variables', () => {
       const template = new VerifyEmailTemplate('test@example.com', 'token123');
-      expect(template.generateSubject()).toBe('Verify your email address');
+      expect(template.generateSubject()).toBe('Verifique su correo electrónico');
       expect(template.email).toBe('test@example.com');
       expect(template.token).toBe('token123');
     });
 
     it('PasswordResetTemplate should generate subject and contain variables', () => {
       const template = new PasswordResetTemplate('test@example.com', 'token123');
-      expect(template.generateSubject()).toBe('Reset your password');
+      expect(template.generateSubject()).toBe('Restablecer su contraseña');
       expect(template.email).toBe('test@example.com');
       expect(template.token).toBe('token123');
     });
 
     it('WelcomeTemplate should generate subject and contain variables', () => {
       const template = new WelcomeTemplate('John Doe');
-      expect(template.generateSubject()).toBe('Welcome to Elevo!');
+      expect(template.generateSubject()).toBe('Bienvenido a Elevo');
       expect(template.name).toBe('John Doe');
     });
   });
@@ -65,7 +65,7 @@ describe('Email Module Unit Tests', () => {
       expect(mockRenderer.render).toHaveBeenCalledWith(template);
       expect(mockProvider.send).toHaveBeenCalledWith({
         to: 'test@example.com',
-        subject: 'Welcome to Elevo!',
+        subject: 'Bienvenido a Elevo',
         body: '<html>body</html>',
         from: 'sender@example.com',
         cc: 'cc@example.com',
