@@ -1,4 +1,5 @@
 import type { IAuthRepository } from '../repositories/auth.repository.interface.js';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import type {
   RegisterDto,
@@ -189,14 +190,14 @@ export class AuthService {
 
   // ── Email verification ─────────────────────────────────────────────────────
 
-  async issueEmailVerificationToken(userId: string): Promise<string> {
-    await this.authRepo.deleteAllUserEmailVerificationTokens(userId);
+  async issueEmailVerificationToken(userId: string, tx?: Prisma.TransactionClient): Promise<string> {
+    await this.authRepo.deleteAllUserEmailVerificationTokens(userId, tx);
     const token = this.tokenService.generateOpaqueToken();
     await this.authRepo.createEmailVerificationToken({
       userId,
       tokenHash: this.tokenService.hashToken(token),
       expiresAt: this.tokenService.fromNowSeconds(EMAIL_VERIFY_TOKEN_TTL_S),
-    });
+    }, tx);
     return token;
   }
 
@@ -226,14 +227,25 @@ export class AuthService {
 
   async resendVerificationEmail(email: string): Promise<void> {
     const user = await this.userService.getByEmail(email);
-    if (!user || user.status !== 'ACTIVE') return;
-
-    if (user.emailVerified) {
-      throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
+    // Silent return to prevent user enumeration:
+    if (!user || user.status !== 'ACTIVE' || user.emailVerified) {
+      return;
     }
 
-    const token = await this.issueEmailVerificationToken(user.id);
-    await this.notificationService.sendVerificationEmail({ id: user.id, email: user.email }, token);
+    // 1. Transaction Boundary: Atomically invalidate old tokens and create the new one
+    const token = await prisma.$transaction(async (tx) => {
+      return this.issueEmailVerificationToken(user.id, tx);
+    });
+
+    // 2. Email Dispatch: Execute outside the transaction boundary
+    try {
+      await this.emailService.sendTemplateEmail({
+        to: user.email,
+        template: new VerifyEmailTemplate(user.email, token),
+      });
+    } catch (error) {
+      logger.error({ err: error, userId: user.id }, 'Verification email dispatch failed during resend');
+    }
   }
 
   // ── Password reset ─────────────────────────────────────────────────────────

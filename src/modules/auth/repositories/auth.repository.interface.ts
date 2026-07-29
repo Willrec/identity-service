@@ -78,10 +78,10 @@ export interface IAuthRepository {
   revokeAllUserRefreshTokens(userId: string): Promise<void>;
 
   // Email verification
-  createEmailVerificationToken(data: CreateEmailVerificationTokenInput): Promise<void>;
+  createEmailVerificationToken(data: CreateEmailVerificationTokenInput, tx?: Prisma.TransactionClient): Promise<void>;
   findEmailVerificationToken(tokenHash: string, tx?: Prisma.TransactionClient): Promise<{ id: string; userId: string; expiresAt: Date } | null>;
   deleteEmailVerificationToken(id: string, tx?: Prisma.TransactionClient): Promise<void>;
-  deleteAllUserEmailVerificationTokens(userId: string): Promise<void>;
+  deleteAllUserEmailVerificationTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void>;
 
   // Password reset
   createPasswordResetToken(data: CreatePasswordResetTokenInput): Promise<void>;

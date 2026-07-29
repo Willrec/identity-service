@@ -91,8 +91,12 @@ export class AuthRepository implements IAuthRepository {
 
   // ── Email verification ─────────────────────────────────────────────────────
 
-  async createEmailVerificationToken(data: CreateEmailVerificationTokenInput): Promise<void> {
-    await this.db.emailVerificationToken.create({
+  async createEmailVerificationToken(
+    data: CreateEmailVerificationTokenInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const client = tx ?? this.db;
+    await client.emailVerificationToken.create({
       data: { userId: data.userId, tokenHash: data.tokenHash, expiresAt: data.expiresAt },
     });
   }
@@ -113,8 +117,9 @@ export class AuthRepository implements IAuthRepository {
     await client.emailVerificationToken.delete({ where: { id } });
   }
 
-  async deleteAllUserEmailVerificationTokens(userId: string): Promise<void> {
-    await this.db.emailVerificationToken.deleteMany({ where: { userId } });
+  async deleteAllUserEmailVerificationTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.emailVerificationToken.deleteMany({ where: { userId } });
   }
 
   // ── Password reset ─────────────────────────────────────────────────────────
