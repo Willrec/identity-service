@@ -18,7 +18,7 @@ import type { SessionService } from './session.service.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 import { EMAIL_VERIFY_TOKEN_TTL_S, RESET_TOKEN_TTL_S } from '../../../config/constants.js';
 
-import { VerifyEmailTemplate, PasswordResetTemplate } from '../../email/index.js';
+import { VerifyEmailTemplate, PasswordResetTemplate, WelcomeTemplate } from '../../email/index.js';
 import type { EmailService } from '../../email/index.js';
 import { logger } from '../../../shared/logger.js';
 
@@ -203,6 +203,8 @@ export class AuthService {
 
   async verifyEmail(rawToken: string): Promise<void> {
     const hashed = this.tokenService.hashToken(rawToken);
+    let userEmail: string | undefined;
+    let userId: string | undefined;
 
     await prisma.$transaction(async (tx) => {
       const record = await this.authRepo.findEmailVerificationToken(hashed, tx);
@@ -211,7 +213,10 @@ export class AuthService {
       }
 
       const user = await this.userService.getRawById(record.userId, tx);
-      if (user && user.emailVerified) {
+      if (!user) {
+        throw HttpError.BadRequest('User not found', 'INVALID_VERIFICATION_TOKEN');
+      }
+      if (user.emailVerified) {
         throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
       }
 
@@ -222,7 +227,21 @@ export class AuthService {
         userId: record.userId,
         action: 'EMAIL_VERIFIED',
       }, tx);
+
+      userEmail = user.email;
+      userId = user.id;
     });
+
+    if (userEmail && userId) {
+      try {
+        await this.emailService.sendTemplateEmail({
+          to: userEmail,
+          template: new WelcomeTemplate(userEmail),
+        });
+      } catch (error) {
+        logger.error({ err: error, userId }, 'Welcome email dispatch failed');
+      }
+    }
   }
 
   async resendVerificationEmail(email: string): Promise<void> {
