@@ -23,7 +23,6 @@ import { SessionService } from '../services/session.service.js';
 import { AuthRepository } from '../repositories/auth.repository.js';
 import { UserRepository } from '../../users/repositories/user.repository.js';
 import { prisma } from '../../../infrastructure/database/prisma.js';
-import { DevelopmentNotificationService } from '../../notifications/services/development-notification.service.js';
 import { composeEmailModule } from '../../../infrastructure/composition/email/email.composition.js';
 
 // Dependency Injection wiring (normally done via DI container like TSyringe/Awilix)
@@ -34,7 +33,6 @@ const tokenService = new TokenService(authRepo);
 const sessionService = new SessionService(authRepo);
 const userService = new UserService(userRepo);
 const jwtTokenService = new JwtTokenService();
-const notificationService = new DevelopmentNotificationService();
 const emailService = composeEmailModule();
 
 const authService = new AuthService(
@@ -43,7 +41,6 @@ const authService = new AuthService(
   passwordService,
   tokenService,
   sessionService,
-  notificationService,
   emailService,
   jwtTokenService
 );

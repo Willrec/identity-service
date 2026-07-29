@@ -84,10 +84,10 @@ export interface IAuthRepository {
   deleteAllUserEmailVerificationTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void>;
 
   // Password reset
-  createPasswordResetToken(data: CreatePasswordResetTokenInput): Promise<void>;
+  createPasswordResetToken(data: CreatePasswordResetTokenInput, tx?: Prisma.TransactionClient): Promise<void>;
   findPasswordResetToken(tokenHash: string): Promise<{ id: string; userId: string; expiresAt: Date } | null>;
   deletePasswordResetToken(id: string): Promise<void>;
-  deleteAllUserPasswordResetTokens(userId: string): Promise<void>;
+  deleteAllUserPasswordResetTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void>;
 
   // Audit log
   createAuditLog(data: CreateAuditLogInput, tx?: Prisma.TransactionClient): Promise<void>;

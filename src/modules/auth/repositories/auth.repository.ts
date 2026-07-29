@@ -124,8 +124,12 @@ export class AuthRepository implements IAuthRepository {
 
   // ── Password reset ─────────────────────────────────────────────────────────
 
-  async createPasswordResetToken(data: CreatePasswordResetTokenInput): Promise<void> {
-    await this.db.passwordResetToken.create({
+  async createPasswordResetToken(
+    data: CreatePasswordResetTokenInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const client = tx ?? this.db;
+    await client.passwordResetToken.create({
       data: { userId: data.userId, tokenHash: data.tokenHash, expiresAt: data.expiresAt },
     });
   }
@@ -143,8 +147,9 @@ export class AuthRepository implements IAuthRepository {
     await this.db.passwordResetToken.delete({ where: { id } });
   }
 
-  async deleteAllUserPasswordResetTokens(userId: string): Promise<void> {
-    await this.db.passwordResetToken.deleteMany({ where: { userId } });
+  async deleteAllUserPasswordResetTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.passwordResetToken.deleteMany({ where: { userId } });
   }
 
   // ── Audit log ──────────────────────────────────────────────────────────────

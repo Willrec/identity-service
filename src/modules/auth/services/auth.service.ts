@@ -17,8 +17,8 @@ import type { PasswordService } from './password.service.js';
 import type { SessionService } from './session.service.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 import { EMAIL_VERIFY_TOKEN_TTL_S, RESET_TOKEN_TTL_S } from '../../../config/constants.js';
-import type { INotificationService } from '../../notifications/services/notification.service.js';
-import { VerifyEmailTemplate } from '../../email/index.js';
+
+import { VerifyEmailTemplate, PasswordResetTemplate } from '../../email/index.js';
 import type { EmailService } from '../../email/index.js';
 import { logger } from '../../../shared/logger.js';
 
@@ -29,7 +29,7 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
-    private readonly notificationService: INotificationService,
+
     private readonly emailService: EmailService,
     private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
   ) { }
@@ -252,30 +252,42 @@ export class AuthService {
 
   async forgotPassword(email: string): Promise<void> {
     const user = await this.userService.getByEmail(email);
-    if (!user || user.status !== 'ACTIVE' || !user.emailVerified) return;
+    // Silent return to prevent user enumeration:
+    if (!user || user.status !== 'ACTIVE' || !user.emailVerified) {
+      return;
+    }
 
-    const token = await this.issuePasswordResetToken(email);
-    if (!token) return;
+    // 1. Transaction Boundary: Atomically invalidate old tokens, create new token, write audit log
+    const token = await prisma.$transaction(async (tx) => {
+      const token = await this.issuePasswordResetToken(user.id, tx);
+      
+      await this.authRepo.createAuditLog({
+        userId: user.id,
+        action: 'PASSWORD_RESET_REQUESTED',
+      }, tx);
 
-    await this.notificationService.sendPasswordResetEmail({ id: user.id, email: user.email }, token);
-    
-    await this.authRepo.createAuditLog({
-      userId: user.id,
-      action: 'PASSWORD_RESET_REQUESTED',
+      return token;
     });
+
+    // 2. Email Dispatch: Execute outside the transaction boundary
+    try {
+      await this.emailService.sendTemplateEmail({
+        to: user.email,
+        template: new PasswordResetTemplate(user.email, token),
+      });
+    } catch (error) {
+      logger.error({ err: error, userId: user.id }, 'Password reset email dispatch failed');
+    }
   }
 
-  async issuePasswordResetToken(email: string): Promise<string | null> {
-    const user = await this.userService.getByEmail(email);
-    if (!user || user.status !== 'ACTIVE') return null; // silent — don't leak existence
-
-    await this.authRepo.deleteAllUserPasswordResetTokens(user.id);
+  async issuePasswordResetToken(userId: string, tx?: Prisma.TransactionClient): Promise<string> {
+    await this.authRepo.deleteAllUserPasswordResetTokens(userId, tx);
     const token = this.tokenService.generateOpaqueToken();
     await this.authRepo.createPasswordResetToken({
-      userId: user.id,
+      userId,
       tokenHash: this.tokenService.hashToken(token),
       expiresAt: this.tokenService.fromNowSeconds(RESET_TOKEN_TTL_S),
-    });
+    }, tx);
     return token;
   }
 
