@@ -112,5 +112,63 @@ describe('Email Module Unit Tests', () => {
 
       await expect(provider.send(emailData)).rejects.toThrow(EmailDispatchError);
     });
+
+    it('should handle array parameters for to, cc, and bcc', async () => {
+      const mockSesClient = {
+        send: vi.fn().mockResolvedValue({ MessageId: '123' }),
+      } as unknown as SESClient;
+
+      const provider = new SesEmailProvider(mockSesClient, { defaultFrom: 'no-reply@example.com' });
+      
+      const emailData = {
+        to: ['recipient1@example.com', 'recipient2@example.com'],
+        subject: 'Subject Line',
+        body: 'HTML Body',
+        cc: ['cc1@example.com', 'cc2@example.com'],
+        bcc: ['bcc1@example.com', 'bcc2@example.com'],
+        replyTo: 'reply@example.com',
+        from: 'custom-from@example.com',
+      };
+
+      await provider.send(emailData);
+
+      expect(mockSesClient.send).toHaveBeenCalled();
+    });
+  });
+});
+
+import { HttpError } from '../../src/shared/errors/HttpError.js';
+
+describe('HttpError Helpers', () => {
+  it('should use default arguments when none are provided', () => {
+    const badRequest = HttpError.BadRequest();
+    expect(badRequest.message).toBe('Bad Request');
+    expect(badRequest.code).toBe('BAD_REQUEST');
+    expect(badRequest.statusCode).toBe(400);
+
+    const unauthorized = HttpError.Unauthorized();
+    expect(unauthorized.message).toBe('Unauthorized');
+    expect(unauthorized.code).toBe('UNAUTHORIZED');
+    expect(unauthorized.statusCode).toBe(401);
+
+    const forbidden = HttpError.Forbidden();
+    expect(forbidden.message).toBe('Forbidden');
+    expect(forbidden.code).toBe('FORBIDDEN');
+    expect(forbidden.statusCode).toBe(403);
+
+    const notFound = HttpError.NotFound();
+    expect(notFound.message).toBe('Not Found');
+    expect(notFound.code).toBe('NOT_FOUND');
+    expect(notFound.statusCode).toBe(404);
+
+    const conflict = HttpError.Conflict();
+    expect(conflict.message).toBe('Conflict');
+    expect(conflict.code).toBe('CONFLICT');
+    expect(conflict.statusCode).toBe(409);
+
+    const internalServer = HttpError.InternalServer();
+    expect(internalServer.message).toBe('Internal Server Error');
+    expect(internalServer.code).toBe('INTERNAL_SERVER_ERROR');
+    expect(internalServer.statusCode).toBe(500);
   });
 });
