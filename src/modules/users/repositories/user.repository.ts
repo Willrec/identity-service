@@ -23,8 +23,9 @@ function toResponse(user: User): UserResponseDto {
 export class UserRepository implements IUserRepository {
   constructor(private readonly db: PrismaClient) {}
 
-  async findById(id: string): Promise<UserResponseDto | null> {
-    const user = await this.db.user.findUnique({ where: { id } });
+  async findById(id: string, tx?: Prisma.TransactionClient): Promise<UserResponseDto | null> {
+    const client = tx ?? this.db;
+    const user = await client.user.findUnique({ where: { id } });
     return user ? toResponse(user) : null;
   }
 

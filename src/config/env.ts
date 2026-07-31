@@ -25,6 +25,10 @@ const envSchema = z.object({
   RATE_LIMIT_RESET_PASSWORD: z.coerce.number().int().positive().default(5),
   RATE_LIMIT_VERIFY_EMAIL: z.coerce.number().int().positive().default(10),
   RATE_LIMIT_RESEND_VERIFICATION: z.coerce.number().int().positive().default(3),
+  AWS_REGION: z.string().min(1),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().email(),
 });
 
 const parsed = envSchema.safeParse(process.env);

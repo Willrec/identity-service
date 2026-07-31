@@ -14,8 +14,8 @@ export class UserService {
     return user;
   }
 
-  async getRawById(id: string): Promise<UserResponseDto | null> {
-    return this.userRepo.findById(id);
+  async getRawById(id: string, tx?: Prisma.TransactionClient): Promise<UserResponseDto | null> {
+    return this.userRepo.findById(id, tx);
   }
 
   async getByEmail(email: string): Promise<UserResponseDto | null> {

@@ -2,7 +2,7 @@ import type { CreateUserDto, UpdateUserDto, UserResponseDto } from '../dto/user.
 import type { Prisma } from '@prisma/client';
 
 export interface IUserRepository {
-  findById(id: string): Promise<UserResponseDto | null>;
+  findById(id: string, tx?: Prisma.TransactionClient): Promise<UserResponseDto | null>;
   findByEmail(email: string, tx?: Prisma.TransactionClient): Promise<UserResponseDto | null>;
   /** Returns full record including passwordHash — never expose in responses */
   findByEmailWithPassword(
