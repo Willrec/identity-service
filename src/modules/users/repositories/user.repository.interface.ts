@@ -1,4 +1,4 @@
-import type { CreateUserDto, UpdateUserDto, UserResponseDto, UserPasswordRecord } from '../dto/user.dto.js';
+import type { CreateUserDto, UpdateUserDto, UserResponseDto } from '../dto/user.dto.js';
 import type { Prisma } from '@prisma/client';
 
 export interface IUserRepository {
@@ -9,10 +9,6 @@ export interface IUserRepository {
     email: string,
     tx?: Prisma.TransactionClient
   ): Promise<(UserResponseDto & { passwordHash: string | null }) | null>;
-  findPasswordRecordById(
-    id: string,
-    tx?: Prisma.TransactionClient
-  ): Promise<UserPasswordRecord | null>;
   create(data: CreateUserDto, tx?: Prisma.TransactionClient): Promise<UserResponseDto>;
   update(id: string, data: UpdateUserDto, tx?: Prisma.TransactionClient): Promise<UserResponseDto>;
   markAsDeleted(id: string, tx?: Prisma.TransactionClient): Promise<void>;

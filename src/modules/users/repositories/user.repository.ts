@@ -1,6 +1,6 @@
-import type { CreateUserDto, UpdateUserDto, UserResponseDto, UserPasswordRecord } from '../dto/user.dto.js';
 import type { PrismaClient, User, Prisma } from '@prisma/client';
 import type { IUserRepository } from './user.repository.interface.js';
+import type { CreateUserDto, UpdateUserDto, UserResponseDto } from '../dto/user.dto.js';
 
 // ── Mapper ────────────────────────────────────────────────────────────────────
 
@@ -27,18 +27,6 @@ export class UserRepository implements IUserRepository {
     const client = tx ?? this.db;
     const user = await client.user.findUnique({ where: { id } });
     return user ? toResponse(user) : null;
-  }
-
-  async findPasswordRecordById(
-    id: string,
-    tx?: Prisma.TransactionClient
-  ): Promise<UserPasswordRecord | null> {
-    const client = tx ?? this.db;
-    const user = await client.user.findUnique({
-      where: { id },
-      select: { id: true, passwordHash: true },
-    });
-    return user;
   }
 
   async findByEmail(email: string, tx?: Prisma.TransactionClient): Promise<UserResponseDto | null> {
