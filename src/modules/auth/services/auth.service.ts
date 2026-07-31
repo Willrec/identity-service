@@ -34,7 +34,7 @@ export class AuthService {
     private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
   ) { }
 
-  // ── Register ───────────────────────────────────────────────────────────────
+  // ──  Register ───────────────────────────────────────────────────────────────
 
   async register(dto: RegisterDto): Promise<RegisterResponseDto> {
     const passwordHash = await this.passwordService.hash(dto.password);
@@ -279,7 +279,7 @@ export class AuthService {
     // 1. Transaction Boundary: Atomically invalidate old tokens, create new token, write audit log
     const token = await prisma.$transaction(async (tx) => {
       const token = await this.issuePasswordResetToken(user.id, tx);
-      
+
       await this.authRepo.createAuditLog({
         userId: user.id,
         action: 'PASSWORD_RESET_REQUESTED',
