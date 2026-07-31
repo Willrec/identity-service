@@ -1,6 +1,6 @@
 import type { IUserRepository } from '../repositories/user.repository.interface.js';
 import type { Prisma } from '@prisma/client';
-import type { UserResponseDto, CreateUserDto, UpdateUserDto } from '../dto/user.dto.js';
+import type { UserResponseDto, CreateUserDto, UpdateUserDto, UserPasswordRecord } from '../dto/user.dto.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 
 export class UserService {
@@ -16,6 +16,13 @@ export class UserService {
 
   async getRawById(id: string, tx?: Prisma.TransactionClient): Promise<UserResponseDto | null> {
     return this.userRepo.findById(id, tx);
+  }
+
+  async findPasswordRecordById(
+    id: string,
+    tx?: Prisma.TransactionClient
+  ): Promise<UserPasswordRecord | null> {
+    return this.userRepo.findPasswordRecordById(id, tx);
   }
 
   async getByEmail(email: string): Promise<UserResponseDto | null> {

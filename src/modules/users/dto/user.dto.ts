@@ -31,3 +31,8 @@ export interface UpdateUserDto {
   emailVerified?: boolean;
   status?: UserStatus;
 }
+
+export interface UserPasswordRecord {
+  id: string;
+  passwordHash: string | null;
+}

@@ -20,6 +20,7 @@ import { EMAIL_VERIFY_TOKEN_TTL_S, RESET_TOKEN_TTL_S } from '../../../config/con
 
 import { VerifyEmailTemplate, PasswordResetTemplate, WelcomeTemplate } from '../../email/index.js';
 import type { EmailService } from '../../email/index.js';
+import type { IVerificationLinkBuilder } from './verification-link-builder.interface.js';
 import { logger } from '../../../shared/logger.js';
 
 export class AuthService {
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly sessionService: SessionService,
 
     private readonly emailService: EmailService,
+    private readonly linkBuilder: IVerificationLinkBuilder,
     private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
   ) { }
 
@@ -63,10 +65,11 @@ export class AuthService {
 
     if (!user.emailVerified) {
       const token = await this.issueEmailVerificationToken(user.id);
+      const verificationUrl = this.linkBuilder.buildVerificationUrl(token);
       try {
         await this.emailService.sendTemplateEmail({
           to: user.email,
-          template: new VerifyEmailTemplate(user.email, token),
+          template: new VerifyEmailTemplate(user.email, verificationUrl),
         });
       } catch (error) {
         logger.error({ err: error, userId: user.id }, 'Verification email dispatch failed during registration');
@@ -257,10 +260,11 @@ export class AuthService {
     });
 
     // 2. Email Dispatch: Execute outside the transaction boundary
+    const verificationUrl = this.linkBuilder.buildVerificationUrl(token);
     try {
       await this.emailService.sendTemplateEmail({
         to: user.email,
-        template: new VerifyEmailTemplate(user.email, token),
+        template: new VerifyEmailTemplate(user.email, verificationUrl),
       });
     } catch (error) {
       logger.error({ err: error, userId: user.id }, 'Verification email dispatch failed during resend');
@@ -289,10 +293,11 @@ export class AuthService {
     });
 
     // 2. Email Dispatch: Execute outside the transaction boundary
+    const resetUrl = this.linkBuilder.buildPasswordResetUrl(token);
     try {
       await this.emailService.sendTemplateEmail({
         to: user.email,
-        template: new PasswordResetTemplate(user.email, token),
+        template: new PasswordResetTemplate(user.email, resetUrl),
       });
     } catch (error) {
       logger.error({ err: error, userId: user.id }, 'Password reset email dispatch failed');
@@ -311,37 +316,66 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    // 1. CPU-bound hashing occurs outside the database transaction
-    const passwordHash = await this.passwordService.hash(dto.newPassword);
     const hashedToken = this.tokenService.hashToken(dto.token);
 
-    // 2. Database transaction boundary
+    // 1. Validate token state and retrieve associated user password record
+    const record = await this.authRepo.findPasswordResetToken(hashedToken);
+    if (!record || record.expiresAt < new Date()) {
+      throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
+    }
+
+    const user = await this.userService.findPasswordRecordById(record.userId);
+    if (!user) {
+      throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
+    }
+
+    // Re-verify user active status
+    const rawUser = await this.userService.getRawById(record.userId);
+    if (!rawUser || rawUser.status !== 'ACTIVE') {
+      throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
+    }
+
+    // 2. Enforce domain security policy: Prevent password reuse
+    if (user.passwordHash) {
+      const isSamePassword = await this.passwordService.verify(dto.newPassword, user.passwordHash);
+      if (isSamePassword) {
+        throw HttpError.BadRequest(
+          'New password must be different from current password',
+          'NEW_PASSWORD_MUST_BE_DIFFERENT'
+        );
+      }
+    }
+
+    // 3. CPU-bound hashing occurs outside the database transaction
+    const passwordHash = await this.passwordService.hash(dto.newPassword);
+
+    // 4. Database transaction boundary for updates
     await prisma.$transaction(async (tx) => {
-      // Validate token state
-      const record = await this.authRepo.findPasswordResetToken(hashedToken, tx);
-      if (!record || record.expiresAt < new Date()) {
+      // Re-validate token state inside transaction to prevent race conditions
+      const txRecord = await this.authRepo.findPasswordResetToken(hashedToken, tx);
+      if (!txRecord || txRecord.expiresAt < new Date()) {
         throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
       }
 
-      // Validate user eligibility (silent error to prevent enumeration)
-      const user = await this.userService.getRawById(record.userId, tx);
-      if (!user || user.status !== 'ACTIVE') {
+      // Re-validate user status
+      const txUser = await this.userService.getRawById(txRecord.userId, tx);
+      if (!txUser || txUser.status !== 'ACTIVE') {
         throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
       }
 
       // Update password hash
-      await this.userService.updatePassword(record.userId, passwordHash, tx);
+      await this.userService.updatePassword(txRecord.userId, passwordHash, tx);
 
       // Invalidate/delete the password reset token
-      await this.authRepo.deletePasswordResetToken(record.id, tx);
+      await this.authRepo.deletePasswordResetToken(txRecord.id, tx);
 
       // Invalidate all user sessions and refresh tokens
-      await this.sessionService.revokeAll(record.userId, tx);
-      await this.authRepo.revokeAllUserRefreshTokens(record.userId, tx);
+      await this.sessionService.revokeAll(txRecord.userId, tx);
+      await this.authRepo.revokeAllUserRefreshTokens(txRecord.userId, tx);
 
       // Record audit log
       await this.authRepo.createAuditLog({
-        userId: record.userId,
+        userId: txRecord.userId,
         action: 'PASSWORD_RESET_COMPLETED',
       }, tx);
     });

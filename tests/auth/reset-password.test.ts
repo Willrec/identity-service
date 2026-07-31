@@ -86,4 +86,34 @@ describe('POST /api/v1/auth/reset-password', () => {
     const reusedRes = await resetPassword(validToken, 'AnotherPassword123!');
     expect(reusedRes.status).toBe(400);
   });
+
+  it('rejects password reuse (same as current password)', async () => {
+    const { userPayload } = await authenticateClient();
+    const user = await prisma.user.findUnique({ where: { email: userPayload.email } });
+    
+    // Create token
+    const validToken = tokenService.generateOpaqueToken();
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user!.id,
+        tokenHash: tokenService.hashToken(validToken),
+        expiresAt: new Date(Date.now() + 100000),
+      }
+    });
+
+    // Try resetting to the same password (userPayload.password)
+    const res = await resetPassword(validToken, userPayload.password);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('NEW_PASSWORD_MUST_BE_DIFFERENT');
+
+    // Reset token should still exist
+    const tokenRecord = await prisma.passwordResetToken.findFirst({
+      where: { userId: user!.id }
+    });
+    expect(tokenRecord).not.toBeNull();
+
+    // Password should remain unchanged (old password still works)
+    const oldLoginRes = await login(userPayload.email, userPayload.password);
+    expect(oldLoginRes.res.status).toBe(200);
+  });
 });
