@@ -25,7 +25,7 @@ describe('Email Module Unit Tests', () => {
 
     it('WelcomeTemplate should generate subject and contain variables', () => {
       const template = new WelcomeTemplate('John Doe');
-      expect(template.generateSubject()).toBe('Bienvenido a Elevo');
+      expect(template.generateSubject()).toBe('Bienvenido');
       expect(template.name).toBe('John Doe');
     });
   });
@@ -65,7 +65,7 @@ describe('Email Module Unit Tests', () => {
       expect(mockRenderer.render).toHaveBeenCalledWith(template);
       expect(mockProvider.send).toHaveBeenCalledWith({
         to: 'test@example.com',
-        subject: 'Bienvenido a Elevo',
+        subject: 'Bienvenido',
         body: '<html>body</html>',
         from: 'sender@example.com',
         cc: 'cc@example.com',
