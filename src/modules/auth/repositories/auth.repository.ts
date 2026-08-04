@@ -40,8 +40,9 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-  async revokeAllUserSessions(userId: string): Promise<void> {
-    await this.db.session.updateMany({
+  async revokeAllUserSessions(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.session.updateMany({
       where: { userId, revoked: false },
       data: { revoked: true, revokedAt: new Date() },
     });
@@ -82,8 +83,9 @@ export class AuthRepository implements IAuthRepository {
     });
   }
 
-  async revokeAllUserRefreshTokens(userId: string): Promise<void> {
-    await this.db.refreshToken.updateMany({
+  async revokeAllUserRefreshTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.refreshToken.updateMany({
       where: { userId, revoked: false },
       data: { revoked: true, revokedAt: new Date() },
     });
@@ -91,52 +93,68 @@ export class AuthRepository implements IAuthRepository {
 
   // ── Email verification ─────────────────────────────────────────────────────
 
-  async createEmailVerificationToken(data: CreateEmailVerificationTokenInput): Promise<void> {
-    await this.db.emailVerificationToken.create({
+  async createEmailVerificationToken(
+    data: CreateEmailVerificationTokenInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const client = tx ?? this.db;
+    await client.emailVerificationToken.create({
       data: { userId: data.userId, tokenHash: data.tokenHash, expiresAt: data.expiresAt },
     });
   }
 
   async findEmailVerificationToken(
     tokenHash: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<{ id: string; userId: string; expiresAt: Date } | null> {
-    return this.db.emailVerificationToken.findFirst({
+    const client = tx ?? this.db;
+    return client.emailVerificationToken.findFirst({
       where: { tokenHash },
       select: { id: true, userId: true, expiresAt: true },
     });
   }
 
-  async deleteEmailVerificationToken(id: string): Promise<void> {
-    await this.db.emailVerificationToken.delete({ where: { id } });
+  async deleteEmailVerificationToken(id: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.emailVerificationToken.delete({ where: { id } });
   }
 
-  async deleteAllUserEmailVerificationTokens(userId: string): Promise<void> {
-    await this.db.emailVerificationToken.deleteMany({ where: { userId } });
+  async deleteAllUserEmailVerificationTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.emailVerificationToken.deleteMany({ where: { userId } });
   }
 
   // ── Password reset ─────────────────────────────────────────────────────────
 
-  async createPasswordResetToken(data: CreatePasswordResetTokenInput): Promise<void> {
-    await this.db.passwordResetToken.create({
+  async createPasswordResetToken(
+    data: CreatePasswordResetTokenInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const client = tx ?? this.db;
+    await client.passwordResetToken.create({
       data: { userId: data.userId, tokenHash: data.tokenHash, expiresAt: data.expiresAt },
     });
   }
 
   async findPasswordResetToken(
     tokenHash: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<{ id: string; userId: string; expiresAt: Date } | null> {
-    return this.db.passwordResetToken.findFirst({
+    const client = tx ?? this.db;
+    return client.passwordResetToken.findFirst({
       where: { tokenHash },
       select: { id: true, userId: true, expiresAt: true },
     });
   }
 
-  async deletePasswordResetToken(id: string): Promise<void> {
-    await this.db.passwordResetToken.delete({ where: { id } });
+  async deletePasswordResetToken(id: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.passwordResetToken.delete({ where: { id } });
   }
 
-  async deleteAllUserPasswordResetTokens(userId: string): Promise<void> {
-    await this.db.passwordResetToken.deleteMany({ where: { userId } });
+  async deleteAllUserPasswordResetTokens(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
+    const client = tx ?? this.db;
+    await client.passwordResetToken.deleteMany({ where: { userId } });
   }
 
   // ── Audit log ──────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import type { IAuthRepository } from '../repositories/auth.repository.interface.js';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../../infrastructure/database/prisma.js';
 import type {
   RegisterDto,
@@ -16,7 +17,10 @@ import type { PasswordService } from './password.service.js';
 import type { SessionService } from './session.service.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 import { EMAIL_VERIFY_TOKEN_TTL_S, RESET_TOKEN_TTL_S } from '../../../config/constants.js';
-import type { INotificationService } from '../../notifications/services/notification.service.js';
+
+import { VerifyEmailTemplate, PasswordResetTemplate, WelcomeTemplate } from '../../email/index.js';
+import type { EmailService } from '../../email/index.js';
+import { logger } from '../../../shared/logger.js';
 
 export class AuthService {
   constructor(
@@ -25,11 +29,12 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
-    private readonly notificationService: INotificationService,
+
+    private readonly emailService: EmailService,
     private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
   ) { }
 
-  // ── Register ───────────────────────────────────────────────────────────────
+  // ──  Register ───────────────────────────────────────────────────────────────
 
   async register(dto: RegisterDto): Promise<RegisterResponseDto> {
     const passwordHash = await this.passwordService.hash(dto.password);
@@ -58,7 +63,14 @@ export class AuthService {
 
     if (!user.emailVerified) {
       const token = await this.issueEmailVerificationToken(user.id);
-      await this.notificationService.sendVerificationEmail({ id: user.id, email: user.email }, token);
+      try {
+        await this.emailService.sendTemplateEmail({
+          to: user.email,
+          template: new VerifyEmailTemplate(user.email, token),
+        });
+      } catch (error) {
+        logger.error({ err: error, userId: user.id }, 'Verification email dispatch failed during registration');
+      }
     }
 
     return { id: user.id, email: user.email, status: user.status };
@@ -178,100 +190,160 @@ export class AuthService {
 
   // ── Email verification ─────────────────────────────────────────────────────
 
-  async issueEmailVerificationToken(userId: string): Promise<string> {
-    await this.authRepo.deleteAllUserEmailVerificationTokens(userId);
+  async issueEmailVerificationToken(userId: string, tx?: Prisma.TransactionClient): Promise<string> {
+    await this.authRepo.deleteAllUserEmailVerificationTokens(userId, tx);
     const token = this.tokenService.generateOpaqueToken();
     await this.authRepo.createEmailVerificationToken({
       userId,
       tokenHash: this.tokenService.hashToken(token),
       expiresAt: this.tokenService.fromNowSeconds(EMAIL_VERIFY_TOKEN_TTL_S),
-    });
+    }, tx);
     return token;
   }
 
   async verifyEmail(rawToken: string): Promise<void> {
-    const record = await this.authRepo.findEmailVerificationToken(
-      this.tokenService.hashToken(rawToken),
-    );
-    if (!record || record.expiresAt < new Date()) {
-      throw HttpError.BadRequest('Invalid or expired token', 'INVALID_VERIFICATION_TOKEN');
-    }
+    const hashed = this.tokenService.hashToken(rawToken);
+    let userEmail: string | undefined;
+    let userId: string | undefined;
 
-    const user = await this.userService.getRawById(record.userId);
-    if (user && user.emailVerified) {
-      throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
-    }
+    await prisma.$transaction(async (tx) => {
+      const record = await this.authRepo.findEmailVerificationToken(hashed, tx);
+      if (!record || record.expiresAt < new Date()) {
+        throw HttpError.BadRequest('Invalid or expired token', 'INVALID_VERIFICATION_TOKEN');
+      }
 
-    await this.userService.markEmailVerified(record.userId);
-    await this.authRepo.deleteEmailVerificationToken(record.id);
+      const user = await this.userService.getRawById(record.userId, tx);
+      if (!user) {
+        throw HttpError.BadRequest('User not found', 'INVALID_VERIFICATION_TOKEN');
+      }
+      if (user.emailVerified) {
+        throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
+      }
 
-    await this.authRepo.createAuditLog({
-      userId: record.userId,
-      action: 'EMAIL_VERIFIED',
+      await this.userService.markEmailVerified(record.userId, tx);
+      await this.authRepo.deleteEmailVerificationToken(record.id, tx);
+
+      await this.authRepo.createAuditLog({
+        userId: record.userId,
+        action: 'EMAIL_VERIFIED',
+      }, tx);
+
+      userEmail = user.email;
+      userId = user.id;
     });
+
+    if (userEmail && userId) {
+      try {
+        await this.emailService.sendTemplateEmail({
+          to: userEmail,
+          template: new WelcomeTemplate(userEmail),
+        });
+      } catch (error) {
+        logger.error({ err: error, userId }, 'Welcome email dispatch failed');
+      }
+    }
   }
 
   async resendVerificationEmail(email: string): Promise<void> {
     const user = await this.userService.getByEmail(email);
-    if (!user || user.status !== 'ACTIVE') return;
-
-    if (user.emailVerified) {
-      throw HttpError.Conflict('Email already verified', 'EMAIL_ALREADY_VERIFIED');
+    // Silent return to prevent user enumeration:
+    if (!user || user.status !== 'ACTIVE' || user.emailVerified) {
+      return;
     }
 
-    const token = await this.issueEmailVerificationToken(user.id);
-    await this.notificationService.sendVerificationEmail({ id: user.id, email: user.email }, token);
+    // 1. Transaction Boundary: Atomically invalidate old tokens and create the new one
+    const token = await prisma.$transaction(async (tx) => {
+      return this.issueEmailVerificationToken(user.id, tx);
+    });
+
+    // 2. Email Dispatch: Execute outside the transaction boundary
+    try {
+      await this.emailService.sendTemplateEmail({
+        to: user.email,
+        template: new VerifyEmailTemplate(user.email, token),
+      });
+    } catch (error) {
+      logger.error({ err: error, userId: user.id }, 'Verification email dispatch failed during resend');
+    }
   }
 
   // ── Password reset ─────────────────────────────────────────────────────────
 
   async forgotPassword(email: string): Promise<void> {
     const user = await this.userService.getByEmail(email);
-    if (!user || user.status !== 'ACTIVE' || !user.emailVerified) return;
+    // Silent return to prevent user enumeration:
+    if (!user || user.status !== 'ACTIVE' || !user.emailVerified) {
+      return;
+    }
 
-    const token = await this.issuePasswordResetToken(email);
-    if (!token) return;
+    // 1. Transaction Boundary: Atomically invalidate old tokens, create new token, write audit log
+    const token = await prisma.$transaction(async (tx) => {
+      const token = await this.issuePasswordResetToken(user.id, tx);
 
-    await this.notificationService.sendPasswordResetEmail({ id: user.id, email: user.email }, token);
-    
-    await this.authRepo.createAuditLog({
-      userId: user.id,
-      action: 'PASSWORD_RESET_REQUESTED',
+      await this.authRepo.createAuditLog({
+        userId: user.id,
+        action: 'PASSWORD_RESET_REQUESTED',
+      }, tx);
+
+      return token;
     });
+
+    // 2. Email Dispatch: Execute outside the transaction boundary
+    try {
+      await this.emailService.sendTemplateEmail({
+        to: user.email,
+        template: new PasswordResetTemplate(user.email, token),
+      });
+    } catch (error) {
+      logger.error({ err: error, userId: user.id }, 'Password reset email dispatch failed');
+    }
   }
 
-  async issuePasswordResetToken(email: string): Promise<string | null> {
-    const user = await this.userService.getByEmail(email);
-    if (!user || user.status !== 'ACTIVE') return null; // silent — don't leak existence
-
-    await this.authRepo.deleteAllUserPasswordResetTokens(user.id);
+  async issuePasswordResetToken(userId: string, tx?: Prisma.TransactionClient): Promise<string> {
+    await this.authRepo.deleteAllUserPasswordResetTokens(userId, tx);
     const token = this.tokenService.generateOpaqueToken();
     await this.authRepo.createPasswordResetToken({
-      userId: user.id,
+      userId,
       tokenHash: this.tokenService.hashToken(token),
       expiresAt: this.tokenService.fromNowSeconds(RESET_TOKEN_TTL_S),
-    });
+    }, tx);
     return token;
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
-    const record = await this.authRepo.findPasswordResetToken(
-      this.tokenService.hashToken(dto.token),
-    );
-    if (!record || record.expiresAt < new Date()) {
-      throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
-    }
+    // 1. CPU-bound hashing occurs outside the database transaction
     const passwordHash = await this.passwordService.hash(dto.newPassword);
-    
-    await this.userService.updatePassword(record.userId, passwordHash);
+    const hashedToken = this.tokenService.hashToken(dto.token);
 
-    await this.authRepo.deleteAllUserPasswordResetTokens(record.userId);
-    await this.sessionService.revokeAll(record.userId);
-    await this.authRepo.revokeAllUserRefreshTokens(record.userId);
+    // 2. Database transaction boundary
+    await prisma.$transaction(async (tx) => {
+      // Validate token state
+      const record = await this.authRepo.findPasswordResetToken(hashedToken, tx);
+      if (!record || record.expiresAt < new Date()) {
+        throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
+      }
 
-    await this.authRepo.createAuditLog({
-      userId: record.userId,
-      action: 'PASSWORD_RESET_COMPLETED',
+      // Validate user eligibility (silent error to prevent enumeration)
+      const user = await this.userService.getRawById(record.userId, tx);
+      if (!user || user.status !== 'ACTIVE') {
+        throw HttpError.BadRequest('Invalid or expired token', 'INVALID_RESET_TOKEN');
+      }
+
+      // Update password hash
+      await this.userService.updatePassword(record.userId, passwordHash, tx);
+
+      // Invalidate/delete the password reset token
+      await this.authRepo.deletePasswordResetToken(record.id, tx);
+
+      // Invalidate all user sessions and refresh tokens
+      await this.sessionService.revokeAll(record.userId, tx);
+      await this.authRepo.revokeAllUserRefreshTokens(record.userId, tx);
+
+      // Record audit log
+      await this.authRepo.createAuditLog({
+        userId: record.userId,
+        action: 'PASSWORD_RESET_COMPLETED',
+      }, tx);
     });
   }
 }

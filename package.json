@@ -50,6 +50,7 @@
     "verify": "node scripts/verify.js"
   },
   "dependencies": {
+    "@aws-sdk/client-ses": "^3.1095.0",
     "@prisma/client": "^6.13.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.7.5",
