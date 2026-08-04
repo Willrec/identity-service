@@ -145,6 +145,12 @@ sequenceDiagram
     App-->>User: Prompt to login with new credentials
 ```
 
+### Decoupled Messaging Architecture
+The email system is decoupled from specific transmission drivers and layout engines via abstract contracts:
+- `IEmailProvider`: Decouples delivery. Currently implemented using AWS SES (`SesEmailProvider`), but easily extensible to other providers (SendGrid, Mailgun, SMTP).
+- `IEmailTemplate`: Decouples template structures (e.g. `VerifyEmailTemplate`, `PasswordResetTemplate`, `WelcomeTemplate`), allowing new transaction emails to be added without modification to the core dispatcher.
+
+
 ---
 
 ## Environment & Configuration
@@ -163,6 +169,7 @@ Run `pnpm env:init` to create your initial `.env` file from `.env.example`. Key 
 - `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY`: 2048-bit RS256 RSA keypair in PEM format (newlines escaped as literal `\n`). Can be automatically managed using `pnpm setup` or `pnpm keys:env`.
 - `SEED_DEFAULT_ADMIN`: If set to `true`, `pnpm seed` will create a default administrator account.
 - `DEFAULT_ADMIN_EMAIL` / `DEFAULT_ADMIN_PASSWORD`: Credentials for the default administrator.
+- `FRONTEND_URL`: Absolute URL of the client application (e.g., `http://localhost:5173`) used by the link builder to construct redirection paths for activation and password reset emails.
 
 ---
 
