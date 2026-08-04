@@ -1,14 +1,29 @@
-import { OAuthConfigurationError } from '../../../modules/oauth/index.js';
-import type { OAuthService } from '../../../modules/oauth/index.js';
+import { OAuthService } from '../../../modules/oauth/index.js';
+import { GoogleOAuthProvider } from '../../../modules/oauth/infrastructure/providers/google/google-oauth.provider.js';
+import { PkceService } from '../../../modules/oauth/infrastructure/services/pkce.service.js';
+import { OAuthStateService } from '../../../modules/oauth/infrastructure/services/oauth-state.service.js';
+import { env } from '../../../config/env.js';
 
 /**
  * composeOAuthModule
  *
  * Composition root function responsible for assembling OAuth service dependencies.
- * Currently configured in a foundational state where no providers are set up.
+ * Instantiates concrete cryptographic utilities and the Google OAuth provider,
+ * injecting them into the OAuthService application orchestrator.
  */
 export function composeOAuthModule(): OAuthService {
-  throw new OAuthConfigurationError(
-    'OAuth provider has not been configured.'
+  const pkceService = new PkceService();
+  const stateService = new OAuthStateService();
+
+  const googleProvider = new GoogleOAuthProvider(
+    {
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      redirectUri: env.GOOGLE_REDIRECT_URI,
+    },
+    pkceService,
+    stateService
   );
+
+  return new OAuthService(googleProvider);
 }
