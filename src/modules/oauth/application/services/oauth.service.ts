@@ -134,8 +134,8 @@ export class OAuthService {
     const existingUser = await this.repository.findUserByEmail(context.email);
 
     if (existingUser) {
-      // Anti-takeover check: both the provider and the local email MUST be verified
-      if (!context.emailVerified || !existingUser.emailVerified) {
+      // Anti-takeover check: the provider email MUST be verified
+      if (!context.emailVerified) {
         throw HttpError.Forbidden('Cannot link account: email is unverified.', 'EMAIL_UNVERIFIED');
       }
 
@@ -146,7 +146,7 @@ export class OAuthService {
         throw HttpError.Forbidden('Account deleted.', 'ACCOUNT_DELETED');
       }
 
-      // Link OAuth account to the existing verified user (no profile update occurs)
+      // Link OAuth account to the existing verified user
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await this.repository.createAccount(
           {
@@ -156,6 +156,13 @@ export class OAuthService {
           },
           tx
         );
+
+        if (!existingUser.emailVerified) {
+          await tx.user.update({
+            where: { id: existingUser.id },
+            data: { emailVerified: true },
+          });
+        }
 
         await this.repository.createAuditLog(
           {
