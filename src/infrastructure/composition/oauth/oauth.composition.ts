@@ -2,12 +2,12 @@ import { OAuthService } from '../../../modules/oauth/application/services/oauth.
 import { CookieOAuthFlowStore } from '../../../modules/oauth/infrastructure/storage/cookie-oauth-flow-store.js';
 import { OAuthController } from '../../../modules/oauth/controllers/oauth.controller.js';
 import { OAuthRepository } from '../../../modules/oauth/repositories/oauth.repository.js';
+import type { IOAuthFlowStore } from '../../../modules/oauth/infrastructure/storage/oauth-flow-store.interface.js';
 import type {
-  IOAuthFlowStore,
   IOAuthProviderRegistry,
   OAuthProviderType,
-  IOAuthProvider,
-} from '../../../modules/oauth/index.js';
+} from '../../../modules/oauth/application/contracts/oauth-provider-registry.interface.js';
+import type { IOAuthProvider } from '../../../modules/oauth/application/contracts/oauth-provider.interface.js';
 import { GoogleOAuthProvider } from '../../../modules/oauth/infrastructure/providers/google/google-oauth.provider.js';
 import { OAuthProviderRegistry } from '../../../modules/oauth/infrastructure/providers/oauth-provider.registry.js';
 import { FetchOAuthHttpClient } from '../../../modules/oauth/infrastructure/http/fetch-oauth-http-client.js';

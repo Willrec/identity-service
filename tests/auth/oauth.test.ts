@@ -2,12 +2,12 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { prisma } from '../../src/infrastructure/database/prisma.js';
 import { request } from '../setup/test-app.js';
 import { cleanupData, createVerifiedUser, createSuspendedUser, createDeletedUser } from '../setup/helpers.js';
-import { GoogleOAuthProvider } from '../../src/modules/oauth/infrastructure/providers/google/google-oauth.provider.js';
+import { FetchOAuthHttpClient } from '../../src/modules/oauth/infrastructure/http/fetch-oauth-http-client.js';
 import { encrypt } from '../../src/shared/security/crypto.js';
 import { env } from '../../src/config/env.js';
-import { OAuthDuplicateEmailError } from '../../src/modules/oauth/application/errors/oauth-duplicate-email.error.js';
+import { OAuthDuplicateEmailError } from '../../src/modules/oauth/application/errors/oauth-duplicate-email.error.ts';
 import { OAuthRepository } from '../../src/modules/oauth/repositories/oauth.repository.js';
-import type { OAuthProviderType } from '../../src/modules/oauth/index.js';
+import { OAuthHttpError } from '../../src/modules/oauth/application/errors/oauth-http.error.js';
 
 // Helper to encrypt flow cookies to match the real encrypt/decrypt implementation
 function makeOAuthSessionCookie(state: string, codeVerifier: string): string {
@@ -88,18 +88,20 @@ describe('OAuth Authentication Endpoints', () => {
       const email = 'new-oauth-user@example.com';
       const googleUserId = 'google-sub-123';
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockResolvedValue({
-        accessToken: 'access-token-123',
-        expiresIn: 3600,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-123',
+        expires_in: 3600,
+        token_type: 'Bearer',
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'getProfile').mockResolvedValue({
-        providerUserId: googleUserId,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: googleUserId,
         email,
-        emailVerified: true,
-        firstName: 'Oauth',
-        lastName: 'User',
-        pictureUrl: 'http://avatar.url',
+        email_verified: true,
+        given_name: 'Oauth',
+        family_name: 'User',
+        picture: 'http://avatar.url',
       });
 
       const res = await request
@@ -136,17 +138,19 @@ describe('OAuth Authentication Endpoints', () => {
 
       const googleUserId = 'google-sub-456';
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockResolvedValue({
-        accessToken: 'access-token-123',
-        expiresIn: 3600,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
+        refresh_token: 'refresh-token-123',
+        expires_in: 3600,
+        token_type: 'Bearer',
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'getProfile').mockResolvedValue({
-        providerUserId: googleUserId,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: googleUserId,
         email: payload.email,
-        emailVerified: true,
-        firstName: 'Different',
-        lastName: 'Name',
+        email_verified: true,
+        given_name: 'Different',
+        family_name: 'Name',
       });
 
       const res = await request
@@ -172,21 +176,64 @@ describe('OAuth Authentication Endpoints', () => {
       expect(auditLinked).toBeDefined();
     });
 
+    it('links existing unverified user automatically but verifies their email', async () => {
+      // Pre-create user without email verification
+      const state = 'valid-state';
+      const codeVerifier = 'valid-verifier-123';
+      const cookie = makeOAuthSessionCookie(state, codeVerifier);
+
+      const googleUserId = 'google-sub-unverified-link';
+      const email = 'pre-created-unverified-email@example.com';
+
+      const existingUser = await prisma.user.create({
+        data: {
+          email,
+          emailVerified: false,
+          firstName: 'Pre',
+          lastName: 'Created',
+          status: 'ACTIVE',
+        },
+      });
+      createdUserIds.add(existingUser.id);
+
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
+      });
+
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: googleUserId,
+        email,
+        email_verified: true, // Google verifies it
+      });
+
+      const res = await request
+        .get('/api/v1/auth/oauth/google/callback')
+        .query({ code: 'auth-code-123', state })
+        .set('Cookie', [cookie]);
+
+      expect(res.status).toBe(200);
+
+      const user = await prisma.user.findUnique({
+        where: { email },
+        include: { oauthAccounts: true },
+      });
+      expect(user!.emailVerified).toBe(true); // Should auto-verify email
+    });
+
     it('rejects auto-linking if the OAuth provider email is unverified', async () => {
       const { payload } = await createVerifiedUser();
       const state = 'valid-state';
       const codeVerifier = 'valid-verifier-123';
       const cookie = makeOAuthSessionCookie(state, codeVerifier);
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockResolvedValue({
-        accessToken: 'access-token-123',
-        expiresIn: 3600,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'getProfile').mockResolvedValue({
-        providerUserId: 'google-sub-789',
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: 'google-sub-789',
         email: payload.email,
-        emailVerified: false, // unverified email!
+        email_verified: false, // unverified email!
       });
 
       const res = await request
@@ -215,15 +262,15 @@ describe('OAuth Authentication Endpoints', () => {
         },
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockResolvedValue({
-        accessToken: 'access-token-123',
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
         expiresIn: 3600,
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'getProfile').mockResolvedValue({
-        providerUserId: googleUserId,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: googleUserId,
         email: payload.email,
-        emailVerified: true,
+        email_verified: true,
       });
 
       const res = await request
@@ -247,15 +294,14 @@ describe('OAuth Authentication Endpoints', () => {
       const codeVerifier = 'valid-verifier-123';
       const cookie = makeOAuthSessionCookie(state, codeVerifier);
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockResolvedValue({
-        accessToken: 'access-token-123',
-        expiresIn: 3600,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'getProfile').mockResolvedValue({
-        providerUserId: 'google-sub-replay',
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: 'google-sub-replay',
         email: 'replay-user@example.com',
-        emailVerified: true,
+        email_verified: true,
       });
 
       // First request succeeds
@@ -286,15 +332,14 @@ describe('OAuth Authentication Endpoints', () => {
       const codeVerifier = 'valid-verifier-123';
       const cookie = makeOAuthSessionCookie(state, codeVerifier);
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockResolvedValue({
-        accessToken: 'access-token-123',
-        expiresIn: 3600,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'getProfile').mockResolvedValue({
-        providerUserId: 'sub-suspended',
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: 'sub-suspended',
         email: suspendedPayload.email,
-        emailVerified: true,
+        email_verified: true,
       });
 
       const res = await request
@@ -306,13 +351,38 @@ describe('OAuth Authentication Endpoints', () => {
       expect(res.body.error.code).toBe('ACCOUNT_SUSPENDED');
     });
 
+    it('blocks deleted users from logging in via oauth', async () => {
+      const { payload: deletedPayload } = await createDeletedUser();
+      const state = 'valid-state';
+      const codeVerifier = 'valid-verifier-123';
+      const cookie = makeOAuthSessionCookie(state, codeVerifier);
+
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
+      });
+
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: 'sub-deleted',
+        email: deletedPayload.email,
+        email_verified: true,
+      });
+
+      const res = await request
+        .get('/api/v1/auth/oauth/google/callback')
+        .query({ code: 'auth-code-123', state })
+        .set('Cookie', [cookie]);
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('ACCOUNT_DELETED');
+    });
+
     it('rolls back database modifications completely on provider or networking failures', async () => {
       const state = 'valid-state';
       const codeVerifier = 'valid-verifier-123';
       const cookie = makeOAuthSessionCookie(state, codeVerifier);
       const email = 'fail-rollback-user@example.com';
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockRejectedValue(
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockRejectedValue(
         new Error('Google network connection timeout')
       );
 
@@ -327,6 +397,48 @@ describe('OAuth Authentication Endpoints', () => {
       expect(user).toBeNull(); // Assert rolled back completely
     });
 
+    it('handles Google OAuth Provider-level exchange HTTP errors correctly', async () => {
+      const state = 'valid-state';
+      const codeVerifier = 'valid-verifier-123';
+      const cookie = makeOAuthSessionCookie(state, codeVerifier);
+
+      // Simulate a raw provider exchange bad request (e.g. 400 Bad Request from Google)
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockRejectedValue(
+        new OAuthHttpError(400, 'Bad Request', JSON.stringify({ error: 'invalid_grant' }))
+      );
+
+      const res = await request
+        .get('/api/v1/auth/oauth/google/callback')
+        .query({ code: 'auth-code-123', state })
+        .set('Cookie', [cookie]);
+
+      expect(res.status).toBe(500);
+      expect(res.body.error.code).toBe('OAUTH_PROVIDER_ERROR');
+    });
+
+    it('handles Google OAuth Provider-level userinfo HTTP errors correctly', async () => {
+      const state = 'valid-state';
+      const codeVerifier = 'valid-verifier-123';
+      const cookie = makeOAuthSessionCookie(state, codeVerifier);
+
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
+      });
+
+      // Simulate profile fetch HTTP error
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockRejectedValue(
+        new OAuthHttpError(401, 'Unauthorized', 'Invalid access token')
+      );
+
+      const res = await request
+        .get('/api/v1/auth/oauth/google/callback')
+        .query({ code: 'auth-code-123', state })
+        .set('Cookie', [cookie]);
+
+      expect(res.status).toBe(500);
+      expect(res.body.error.code).toBe('OAUTH_PROVIDER_ERROR');
+    });
+
     it('handles concurrent provisioning race condition via fallback account linking', async () => {
       const state = 'valid-state';
       const codeVerifier = 'valid-verifier-123';
@@ -334,15 +446,15 @@ describe('OAuth Authentication Endpoints', () => {
       const email = 'race-condition-user@example.com';
       const googleUserId = 'google-race-123';
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'exchangeCode').mockResolvedValue({
-        accessToken: 'access-token-123',
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'postForm').mockResolvedValue({
+        access_token: 'access-token-123',
         expiresIn: 3600,
       });
 
-      vi.spyOn(GoogleOAuthProvider.prototype, 'getProfile').mockResolvedValue({
-        providerUserId: googleUserId,
+      vi.spyOn(FetchOAuthHttpClient.prototype, 'get').mockResolvedValue({
+        sub: googleUserId,
         email,
-        emailVerified: true,
+        email_verified: true,
         firstName: 'Race',
         lastName: 'Condition',
       });

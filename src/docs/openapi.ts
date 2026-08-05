@@ -769,6 +769,113 @@ export const openApiSpec = {
         },
       },
     },
+    '/auth/oauth/google': {
+      get: {
+        operationId: 'beginGoogleAuth',
+        summary: 'Initiate Google OAuth2 Authorization Flow',
+        description: 'Generates secure PKCE parameters, records state to a secure cookie, and issues an HTTP 302 Redirect to direct the client browser to Google Accounts sign-in.',
+        tags: ['OAuth'],
+        security: [],
+        responses: {
+          '302': {
+            description: 'Redirects to Google OAuth authorization page. Sets temporary __Host-oauth-session cookie.',
+            headers: {
+              Location: {
+                description: 'Google accounts authorization URL.',
+                schema: { type: 'string' },
+              },
+              'Set-Cookie': {
+                description: 'Sets the encrypted __Host-oauth-session cookie.',
+                schema: { type: 'string' },
+              },
+            },
+          },
+          '500': { $ref: '#/components/responses/InternalServerError' },
+        },
+      },
+    },
+    '/auth/oauth/google/callback': {
+      get: {
+        operationId: 'callbackGoogleAuth',
+        summary: 'Google OAuth2 Authorization Callback Endpoint',
+        description: 'Consumes the authorization code and CSRF state returned by Google, validates PKCE verifiers, exchanges code for provider tokens, resolves/creates internal user, establishes session, and returns user/access token.',
+        tags: ['OAuth'],
+        security: [],
+        parameters: [
+          {
+            name: 'code',
+            in: 'query',
+            required: true,
+            description: 'The authorization code returned by Google.',
+            schema: { type: 'string' },
+          },
+          {
+            name: 'state',
+            in: 'query',
+            required: true,
+            description: 'The state parameter to protect against CSRF.',
+            schema: { type: 'string' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'OAuth Authentication successful. Establishes session and sets cookies.',
+            headers: {
+              'Set-Cookie': {
+                description: 'Sets the __Host-refresh (HttpOnly) and csrfToken cookies, and clears the temporary __Host-oauth-session cookie.',
+                schema: { type: 'string' },
+              },
+            },
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/LoginResponse' },
+              },
+            },
+          },
+          '400': {
+            description: 'Validation or CSRF state mismatch error.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    error: {
+                      type: 'object',
+                      properties: {
+                        message: { type: 'string' },
+                        code: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '403': {
+            description: 'Account suspended or deleted, or email is unverified.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean', example: false },
+                    error: {
+                      type: 'object',
+                      properties: {
+                        message: { type: 'string' },
+                        code: { type: 'string' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          '500': { $ref: '#/components/responses/InternalServerError' },
+        },
+      },
+    },
     '/auth/login': {
       post: {
         operationId: 'loginUser',
