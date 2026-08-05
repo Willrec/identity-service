@@ -17,3 +17,7 @@ export * from './application/contracts/oauth-http-client.interface.js';
 export * from './application/dto/oauth-authentication-context.dto.js';
 export * from './application/errors/oauth-provider-error.mapper.js';
 export * from './application/errors/oauth-http.error.js';
+export * from './application/dto/oauth-identity.dto.js';
+export * from './application/errors/oauth-duplicate-email.error.js';
+export * from './repositories/oauth.repository.interface.js';
+export * from './repositories/oauth.repository.js';

@@ -2,6 +2,7 @@ import {
   OAuthService,
   CookieOAuthFlowStore,
   OAuthController,
+  OAuthRepository,
 } from '../../../modules/oauth/index.js';
 import type {
   IOAuthFlowStore,
@@ -14,19 +15,21 @@ import { OAuthProviderRegistry } from '../../../modules/oauth/infrastructure/pro
 import { FetchOAuthHttpClient } from '../../../modules/oauth/infrastructure/http/fetch-oauth-http-client.js';
 import { PkceService } from '../../../modules/oauth/infrastructure/services/pkce.service.js';
 import { OAuthStateService } from '../../../modules/oauth/infrastructure/services/oauth-state.service.js';
+import { prisma } from '../../database/prisma.js';
 import { env } from '../../../config/env.js';
 
 /**
  * composeOAuthModule
  *
  * Composition root function responsible for assembling OAuth service dependencies.
- * Instantiates cryptographic helpers and registers identity providers in a dynamic registry
- * before injecting them into the OAuthService.
+ * Instantiates cryptographic helpers, database repository, and registers identity providers
+ * in a dynamic registry before injecting them into the OAuthService.
  */
 export function composeOAuthModule(): OAuthService {
   const pkceService = new PkceService();
   const stateService = new OAuthStateService();
   const httpClient = new FetchOAuthHttpClient();
+  const repository = new OAuthRepository(prisma);
 
   const googleProvider = new GoogleOAuthProvider(
     {
@@ -43,7 +46,7 @@ export function composeOAuthModule(): OAuthService {
 
   const registry: IOAuthProviderRegistry = new OAuthProviderRegistry(providers);
 
-  return new OAuthService(registry, pkceService, stateService);
+  return new OAuthService(registry, pkceService, stateService, repository);
 }
 
 /**
