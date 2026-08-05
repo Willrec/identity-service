@@ -1,7 +1,9 @@
+import type { OAuthProviderMetadata } from './oauth-provider-registry.interface.js';
 import type { OAuthProfile } from '../dto/oauth-profile.dto.js';
 import type { OAuthTokens } from '../dto/oauth-tokens.dto.js';
 
 export interface IOAuthProvider {
+  readonly metadata: OAuthProviderMetadata;
   getAuthorizationUrl(
     state: string,
     codeChallenge: string

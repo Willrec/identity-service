@@ -13,3 +13,7 @@ export * from './application/contracts/oauth-provider-registry.interface.js';
 export * from './application/dto/oauth-authorization.dto.js';
 export * from './controllers/oauth.controller.js';
 export * from './routes/oauth.router.js';
+export * from './application/contracts/oauth-http-client.interface.js';
+export * from './application/dto/oauth-authentication-context.dto.js';
+export * from './application/errors/oauth-provider-error.mapper.js';
+export * from './application/errors/oauth-http.error.js';

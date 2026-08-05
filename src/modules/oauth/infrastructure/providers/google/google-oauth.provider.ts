@@ -1,7 +1,9 @@
 import type { IOAuthProvider } from '../../../application/contracts/oauth-provider.interface.js';
+import type { OAuthProviderMetadata } from '../../../application/contracts/oauth-provider-registry.interface.js';
+import type { IOAuthHttpClient } from '../../../application/contracts/oauth-http-client.interface.js';
 import type { OAuthTokens } from '../../../application/dto/oauth-tokens.dto.js';
 import type { OAuthProfile } from '../../../application/dto/oauth-profile.dto.js';
-import { OAuthProviderError } from '../../../application/errors/oauth-provider.error.js';
+import { OAuthProviderErrorMapper } from '../../../application/errors/oauth-provider-error.mapper.js';
 
 export interface GoogleOAuthProviderConfig {
   readonly clientId: string;
@@ -17,8 +19,14 @@ export interface GoogleOAuthProviderConfig {
  * Correctly formats and builds redirections using URL and URLSearchParams.
  */
 export class GoogleOAuthProvider implements IOAuthProvider {
+  readonly metadata: OAuthProviderMetadata = {
+    type: 'google',
+    displayName: 'Google',
+  };
+
   constructor(
-    private readonly config: GoogleOAuthProviderConfig
+    private readonly config: GoogleOAuthProviderConfig,
+    private readonly httpClient: IOAuthHttpClient
   ) {}
 
   /**
@@ -43,18 +51,68 @@ export class GoogleOAuthProvider implements IOAuthProvider {
   /**
    * exchangeCode
    *
-   * Unimplemented placeholder for Phase 16.2.
+   * Exchanges authorization code with Google's token endpoint.
    */
-  exchangeCode(_code: string, _codeVerifier: string): Promise<OAuthTokens> {
-    return Promise.reject(new OAuthProviderError('Method not implemented.'));
+  async exchangeCode(code: string, codeVerifier: string): Promise<OAuthTokens> {
+    try {
+      const data = await this.httpClient.postForm<{
+        access_token: string;
+        refresh_token?: string;
+        id_token?: string;
+        expires_in?: number;
+        token_type?: string;
+      }>('https://oauth2.googleapis.com/token', {
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        code,
+        code_verifier: codeVerifier,
+        grant_type: 'authorization_code',
+        redirect_uri: this.config.redirectUri,
+      });
+
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        idToken: data.id_token,
+        expiresIn: data.expires_in,
+        tokenType: data.token_type,
+      };
+    } catch (error) {
+      throw OAuthProviderErrorMapper.map(this.metadata, error);
+    }
   }
 
   /**
    * getProfile
    *
-   * Unimplemented placeholder for Phase 16.2.
+   * Fetches user profile data from Google's UserInfo API.
    */
-  getProfile(_accessToken: string): Promise<OAuthProfile> {
-    return Promise.reject(new OAuthProviderError('Method not implemented.'));
+  async getProfile(accessToken: string): Promise<OAuthProfile> {
+    try {
+      const data = await this.httpClient.get<{
+        sub: string;
+        email: string;
+        email_verified: boolean;
+        given_name?: string;
+        family_name?: string;
+        picture?: string;
+        locale?: string;
+      }>('https://www.googleapis.com/oauth2/v3/userinfo', {
+        Authorization: `Bearer ${accessToken}`,
+      });
+
+      return {
+        provider: 'google',
+        providerUserId: data.sub,
+        email: data.email,
+        emailVerified: data.email_verified === true,
+        firstName: data.given_name,
+        lastName: data.family_name,
+        pictureUrl: data.picture,
+        locale: data.locale,
+      };
+    } catch (error) {
+      throw OAuthProviderErrorMapper.map(this.metadata, error);
+    }
   }
 }

@@ -8,6 +8,7 @@ process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? 'google-client-id
 process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? 'google-client-secret-test';
 process.env.GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3000/api/v1/auth/oauth/google/callback';
 process.env.OAUTH_COOKIE_SECRET = process.env.OAUTH_COOKIE_SECRET ?? 'dummy-oauth-cookie-secret-32-chars-long';
+process.env.OAUTH_HTTP_TIMEOUT_MS = process.env.OAUTH_HTTP_TIMEOUT_MS ?? '10000';
 
 export default defineConfig({
   test: {

@@ -2,6 +2,7 @@ import type { IOAuthProviderRegistry, OAuthProviderType } from '../contracts/oau
 import type { IPkceService } from '../contracts/pkce-service.interface.js';
 import type { IOAuthStateService } from '../contracts/oauth-state-service.interface.js';
 import type { OAuthAuthorizationDto } from '../dto/oauth-authorization.dto.js';
+import type { OAuthAuthenticationContextDto } from '../dto/oauth-authentication-context.dto.js';
 
 /**
  * OAuthService
@@ -40,6 +41,38 @@ export class OAuthService {
       authorizationUrl,
       state,
       codeVerifier,
+    };
+  }
+
+  /**
+   * authenticate
+   *
+   * Coordinates the token exchange and profile retrieval flow with the provider,
+   * returning a transport-agnostic authentication context.
+   */
+  async authenticate(
+    provider: OAuthProviderType,
+    code: string,
+    codeVerifier: string
+  ): Promise<OAuthAuthenticationContextDto> {
+    const providerInstance = this.registry.get(provider);
+
+    const tokens = await providerInstance.exchangeCode(code, codeVerifier);
+    const profile = await providerInstance.getProfile(tokens.accessToken);
+
+    const displayName = [profile.firstName, profile.lastName]
+      .filter(Boolean)
+      .join(' ') || undefined;
+
+    return {
+      provider: providerInstance.metadata.type,
+      providerUserId: profile.providerUserId,
+      email: profile.email,
+      emailVerified: profile.emailVerified,
+      displayName,
+      givenName: profile.firstName,
+      familyName: profile.lastName,
+      avatarUrl: profile.pictureUrl,
     };
   }
 }

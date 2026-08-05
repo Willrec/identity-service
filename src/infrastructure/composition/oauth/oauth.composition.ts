@@ -11,6 +11,7 @@ import type {
 } from '../../../modules/oauth/index.js';
 import { GoogleOAuthProvider } from '../../../modules/oauth/infrastructure/providers/google/google-oauth.provider.js';
 import { OAuthProviderRegistry } from '../../../modules/oauth/infrastructure/providers/oauth-provider.registry.js';
+import { FetchOAuthHttpClient } from '../../../modules/oauth/infrastructure/http/fetch-oauth-http-client.js';
 import { PkceService } from '../../../modules/oauth/infrastructure/services/pkce.service.js';
 import { OAuthStateService } from '../../../modules/oauth/infrastructure/services/oauth-state.service.js';
 import { env } from '../../../config/env.js';
@@ -25,12 +26,16 @@ import { env } from '../../../config/env.js';
 export function composeOAuthModule(): OAuthService {
   const pkceService = new PkceService();
   const stateService = new OAuthStateService();
+  const httpClient = new FetchOAuthHttpClient();
 
-  const googleProvider = new GoogleOAuthProvider({
-    clientId: env.GOOGLE_CLIENT_ID,
-    clientSecret: env.GOOGLE_CLIENT_SECRET,
-    redirectUri: env.GOOGLE_REDIRECT_URI,
-  });
+  const googleProvider = new GoogleOAuthProvider(
+    {
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+      redirectUri: env.GOOGLE_REDIRECT_URI,
+    },
+    httpClient
+  );
 
   const providers = new Map<OAuthProviderType, IOAuthProvider>([
     ['google', googleProvider],
