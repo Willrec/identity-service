@@ -8,6 +8,8 @@ import { env } from '../../src/config/env.js';
 import { OAuthDuplicateEmailError } from '../../src/modules/oauth/application/errors/oauth-duplicate-email.error.js';
 import { OAuthRepository } from '../../src/modules/oauth/repositories/oauth.repository.js';
 import { OAuthHttpError } from '../../src/modules/oauth/application/errors/oauth-http.error.js';
+import { composeOAuthModule, composeOAuthFlowStore } from '../../src/infrastructure/composition/oauth/oauth.composition.js';
+import { OAuthProviderErrorMapper } from '../../src/modules/oauth/application/errors/oauth-provider-error.mapper.js';
 
 // Helper to encrypt flow cookies to match the real encrypt/decrypt implementation
 function makeOAuthSessionCookie(state: string, codeVerifier: string): string {
@@ -512,6 +514,52 @@ describe('OAuth Authentication Endpoints', () => {
       const loggedLinked = user!.auditLogs.filter((l) => l.action === 'OAUTH_ACCOUNT_LINKED');
       expect(loggedCreated.length).toBe(0);
       expect(loggedLinked.length).toBe(1);
+    });
+  });
+
+  describe('OAuth Edge cases & Unit coverage', () => {
+    it('handles non-configured providers in registry', () => {
+      const service = composeOAuthModule();
+      expect(() => service['providerRegistry'].get('facebook' as any)).toThrow();
+    });
+
+    it('handles malformed flow cookies gracefully', async () => {
+      const flowStore = composeOAuthFlowStore();
+      const mockReq = { cookies: { '__Host-oauth-session': 'malformed-value' } } as any;
+      const loaded = await flowStore.load(mockReq);
+      expect(loaded).toBeNull();
+    });
+
+    it('rejects authenticateIdentity with suspended or deleted users', async () => {
+      const service = composeOAuthModule();
+      await expect(
+        service.authenticateIdentity({
+          userId: 'mock-user-1',
+          email: 'suspended@example.com',
+          status: 'SUSPENDED',
+          result: 'EXISTING_ACCOUNT',
+          provider: 'google',
+        })
+      ).rejects.toThrow();
+
+      await expect(
+        service.authenticateIdentity({
+          userId: 'mock-user-2',
+          email: 'deleted@example.com',
+          status: 'DELETED',
+          result: 'EXISTING_ACCOUNT',
+          provider: 'google',
+        })
+      ).rejects.toThrow();
+    });
+
+    it('maps non-Error objects in OAuthProviderErrorMapper', () => {
+      const metadata = { name: 'google', displayName: 'Google' } as any;
+      const mapped = OAuthProviderErrorMapper.map(metadata, 'raw string error');
+      expect(mapped.message).toContain('Unknown error');
+
+      const mapped2 = OAuthProviderErrorMapper.map(metadata, new Error('specific error message'));
+      expect(mapped2.message).toContain('specific error message');
     });
   });
 });
