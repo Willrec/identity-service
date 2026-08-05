@@ -1,4 +1,5 @@
-import { OAuthService } from '../../../modules/oauth/index.js';
+import { OAuthService, CookieOAuthFlowStore } from '../../../modules/oauth/index.js';
+import type { IOAuthFlowStore } from '../../../modules/oauth/index.js';
 import { GoogleOAuthProvider } from '../../../modules/oauth/infrastructure/providers/google/google-oauth.provider.js';
 import { PkceService } from '../../../modules/oauth/infrastructure/services/pkce.service.js';
 import { OAuthStateService } from '../../../modules/oauth/infrastructure/services/oauth-state.service.js';
@@ -26,4 +27,14 @@ export function composeOAuthModule(): OAuthService {
   );
 
   return new OAuthService(googleProvider);
+}
+
+/**
+ * composeOAuthFlowStore
+ *
+ * Instantiates and returns the concrete implementation of the temporary
+ * OAuth flow storage (CookieOAuthFlowStore for this phase).
+ */
+export function composeOAuthFlowStore(): IOAuthFlowStore {
+  return new CookieOAuthFlowStore();
 }

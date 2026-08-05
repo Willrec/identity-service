@@ -5,3 +5,5 @@ export * from './application/dto/oauth-tokens.dto.js';
 export * from './application/errors/oauth-provider.error.js';
 export * from './application/errors/oauth-configuration.error.js';
 export * from './application/errors/oauth-state.error.js';
+export * from './infrastructure/storage/oauth-flow-store.interface.js';
+export * from './infrastructure/storage/cookie-oauth-flow-store.js';
