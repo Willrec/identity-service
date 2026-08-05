@@ -5,7 +5,7 @@ import { cleanupData, createVerifiedUser, createSuspendedUser, createDeletedUser
 import { FetchOAuthHttpClient } from '../../src/modules/oauth/infrastructure/http/fetch-oauth-http-client.js';
 import { encrypt } from '../../src/shared/security/crypto.js';
 import { env } from '../../src/config/env.js';
-import { OAuthDuplicateEmailError } from '../../src/modules/oauth/application/errors/oauth-duplicate-email.error.ts';
+import { OAuthDuplicateEmailError } from '../../src/modules/oauth/application/errors/oauth-duplicate-email.error.js';
 import { OAuthRepository } from '../../src/modules/oauth/repositories/oauth.repository.js';
 import { OAuthHttpError } from '../../src/modules/oauth/application/errors/oauth-http.error.js';
 
