@@ -3,6 +3,12 @@ import { config } from 'dotenv';
 
 config({ path: '.env.test' });
 
+// Fallback values for OAuth testing to avoid boot failures when local .env.test is not updated
+process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? 'google-client-id-test';
+process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? 'google-client-secret-test';
+process.env.GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3000/api/v1/auth/oauth/google/callback';
+process.env.OAUTH_COOKIE_SECRET = process.env.OAUTH_COOKIE_SECRET ?? 'dummy-oauth-cookie-secret-32-chars-long';
+
 export default defineConfig({
   test: {
     globals: true,
