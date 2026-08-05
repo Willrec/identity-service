@@ -240,6 +240,37 @@ export type InternalServerErrorResponse = ErrorResponse;
  */
 export type XCsrfTokenParameter = string;
 
+export type CallbackGoogleAuthParams = {
+/**
+ * The authorization code returned by Google.
+ */
+code: string;
+/**
+ * The state parameter to protect against CSRF.
+ */
+state: string;
+};
+
+export type CallbackGoogleAuth400Error = {
+  message?: string;
+  code?: string;
+};
+
+export type CallbackGoogleAuth400 = {
+  success?: boolean;
+  error?: CallbackGoogleAuth400Error;
+};
+
+export type CallbackGoogleAuth403Error = {
+  message?: string;
+  code?: string;
+};
+
+export type CallbackGoogleAuth403 = {
+  success?: boolean;
+  error?: CallbackGoogleAuth403Error;
+};
+
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
   const result = { queryKey } as T & { queryKey: K };
   for (const key of Object.keys(query)) {
@@ -362,6 +393,229 @@ export const useRegisterUser = <TError = ValidationErrorResponse | ConflictError
       > => {
       return useMutation(getRegisterUserMutationOptions(options));
     }
+
+export type beginGoogleAuthResponse302 = {
+  data: void
+  status: 302
+}
+
+export type beginGoogleAuthResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+;
+export type beginGoogleAuthResponseError = (beginGoogleAuthResponse302 | beginGoogleAuthResponse500) & {
+  headers: Headers;
+};
+
+export type beginGoogleAuthResponse = (beginGoogleAuthResponseError)
+
+export const getBeginGoogleAuthUrl = () => {
+
+
+
+
+  return `/auth/oauth/google`
+}
+
+/**
+ * Generates secure PKCE parameters, records state to a secure cookie, and issues an HTTP 302 Redirect to direct the client browser to Google Accounts sign-in.
+ * @summary Initiate Google OAuth2 Authorization Flow
+ */
+export const beginGoogleAuth = async ( options?: RequestInit): Promise<beginGoogleAuthResponse> => {
+
+  const res = await fetch(getBeginGoogleAuthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: beginGoogleAuthResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as beginGoogleAuthResponse
+}
+
+
+
+
+
+export const getBeginGoogleAuthQueryKey = () => {
+    return [
+    `/auth/oauth/google`
+    ] as const;
+    }
+
+
+export const getBeginGoogleAuthQueryOptions = <TData = Awaited<ReturnType<typeof beginGoogleAuth>>, TError = void | InternalServerErrorResponse>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof beginGoogleAuth>>, TError, TData>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getBeginGoogleAuthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof beginGoogleAuth>>> = ({ signal }) => beginGoogleAuth({ ...(signal ? { signal } : {}), ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof beginGoogleAuth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type BeginGoogleAuthQueryResult = NonNullable<Awaited<ReturnType<typeof beginGoogleAuth>>>
+export type BeginGoogleAuthQueryError = void | InternalServerErrorResponse
+
+
+/**
+ * @summary Initiate Google OAuth2 Authorization Flow
+ */
+
+export function useBeginGoogleAuth<TData = Awaited<ReturnType<typeof beginGoogleAuth>>, TError = void | InternalServerErrorResponse>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof beginGoogleAuth>>, TError, TData>, fetch?: RequestInit}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getBeginGoogleAuthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type callbackGoogleAuthResponse200 = {
+  data: LoginResponse
+  status: 200
+}
+
+export type callbackGoogleAuthResponse400 = {
+  data: CallbackGoogleAuth400
+  status: 400
+}
+
+export type callbackGoogleAuthResponse403 = {
+  data: CallbackGoogleAuth403
+  status: 403
+}
+
+export type callbackGoogleAuthResponse500 = {
+  data: InternalServerErrorResponse
+  status: 500
+}
+
+export type callbackGoogleAuthResponseSuccess = (callbackGoogleAuthResponse200) & {
+  headers: Headers;
+};
+export type callbackGoogleAuthResponseError = (callbackGoogleAuthResponse400 | callbackGoogleAuthResponse403 | callbackGoogleAuthResponse500) & {
+  headers: Headers;
+};
+
+export type callbackGoogleAuthResponse = (callbackGoogleAuthResponseSuccess | callbackGoogleAuthResponseError)
+
+export const getCallbackGoogleAuthUrl = (params: CallbackGoogleAuthParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/auth/oauth/google/callback?${stringifiedParams}` : `/auth/oauth/google/callback`
+}
+
+/**
+ * Consumes the authorization code and CSRF state returned by Google, validates PKCE verifiers, exchanges code for provider tokens, resolves/creates internal user, establishes session, and returns user/access token.
+ * @summary Google OAuth2 Authorization Callback Endpoint
+ */
+export const callbackGoogleAuth = async (params: CallbackGoogleAuthParams, options?: RequestInit): Promise<callbackGoogleAuthResponse> => {
+
+  const res = await fetch(getCallbackGoogleAuthUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: callbackGoogleAuthResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as callbackGoogleAuthResponse
+}
+
+
+
+
+
+export const getCallbackGoogleAuthQueryKey = (params?: CallbackGoogleAuthParams,) => {
+    return [
+    `/auth/oauth/google/callback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getCallbackGoogleAuthQueryOptions = <TData = Awaited<ReturnType<typeof callbackGoogleAuth>>, TError = CallbackGoogleAuth400 | CallbackGoogleAuth403 | InternalServerErrorResponse>(params: CallbackGoogleAuthParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof callbackGoogleAuth>>, TError, TData>, fetch?: RequestInit}
+) => {
+
+const {query: queryOptions, fetch: fetchOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCallbackGoogleAuthQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof callbackGoogleAuth>>> = ({ signal }) => callbackGoogleAuth(params, { ...(signal ? { signal } : {}), ...fetchOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof callbackGoogleAuth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CallbackGoogleAuthQueryResult = NonNullable<Awaited<ReturnType<typeof callbackGoogleAuth>>>
+export type CallbackGoogleAuthQueryError = CallbackGoogleAuth400 | CallbackGoogleAuth403 | InternalServerErrorResponse
+
+
+/**
+ * @summary Google OAuth2 Authorization Callback Endpoint
+ */
+
+export function useCallbackGoogleAuth<TData = Awaited<ReturnType<typeof callbackGoogleAuth>>, TError = CallbackGoogleAuth400 | CallbackGoogleAuth403 | InternalServerErrorResponse>(
+ params: CallbackGoogleAuthParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof callbackGoogleAuth>>, TError, TData>, fetch?: RequestInit}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCallbackGoogleAuthQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type loginUserResponse200 = {
   data: LoginResponse
