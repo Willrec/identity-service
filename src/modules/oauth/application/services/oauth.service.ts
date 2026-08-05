@@ -1,4 +1,7 @@
-import type { IOAuthProvider } from '../contracts/oauth-provider.interface.js';
+import type { IOAuthProviderRegistry, OAuthProviderType } from '../contracts/oauth-provider-registry.interface.js';
+import type { IPkceService } from '../contracts/pkce-service.interface.js';
+import type { IOAuthStateService } from '../contracts/oauth-state-service.interface.js';
+import type { OAuthAuthorizationDto } from '../dto/oauth-authorization.dto.js';
 
 /**
  * OAuthService
@@ -12,15 +15,31 @@ import type { IOAuthProvider } from '../contracts/oauth-provider.interface.js';
  */
 export class OAuthService {
   constructor(
-    private readonly provider: IOAuthProvider
+    private readonly registry: IOAuthProviderRegistry,
+    private readonly pkceService: IPkceService,
+    private readonly stateService: IOAuthStateService
   ) {}
 
   /**
-   * getAuthorizationUrl
+   * beginAuthorization
    *
-   * Retrieves the secure redirection authorization URL from the configured provider.
+   * Initiates the authorization flow for the requested provider.
+   * Generates secure PKCE parameters and CSRF state values, requests the URL
+   * from the resolved provider, and returns the authorization payload.
    */
-  async getAuthorizationUrl(): Promise<string> {
-    return this.provider.getAuthorizationUrl();
+  async beginAuthorization(provider: OAuthProviderType): Promise<OAuthAuthorizationDto> {
+    const providerInstance = this.registry.get(provider);
+
+    const state = this.stateService.generateState();
+    const codeVerifier = this.pkceService.generateVerifier();
+    const codeChallenge = this.pkceService.generateChallenge(codeVerifier);
+
+    const authorizationUrl = await providerInstance.getAuthorizationUrl(state, codeChallenge);
+
+    return {
+      authorizationUrl,
+      state,
+      codeVerifier,
+    };
   }
 }

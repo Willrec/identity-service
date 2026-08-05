@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import type { IOAuthStateService } from '../../application/contracts/oauth-state-service.interface.js';
 
 /**
  * OAuthStateService
@@ -7,7 +8,7 @@ import crypto from 'node:crypto';
  * Produces secure, cryptographically random, URL-safe states to protect
  * authorization flows against CSRF attacks.
  */
-export class OAuthStateService {
+export class OAuthStateService implements IOAuthStateService {
   /**
    * generateState
    *

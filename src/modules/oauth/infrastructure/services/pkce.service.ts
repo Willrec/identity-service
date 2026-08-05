@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import type { IPkceService } from '../../application/contracts/pkce-service.interface.js';
 
 /**
  * PkceService
@@ -7,7 +8,7 @@ import crypto from 'node:crypto';
  * This service is provider-agnostic and maintains zero awareness of specific
  * OAuth endpoints, callback handling, or state logic.
  */
-export class PkceService {
+export class PkceService implements IPkceService {
   /**
    * generateVerifier
    *

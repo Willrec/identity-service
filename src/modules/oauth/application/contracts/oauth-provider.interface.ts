@@ -2,7 +2,10 @@ import type { OAuthProfile } from '../dto/oauth-profile.dto.js';
 import type { OAuthTokens } from '../dto/oauth-tokens.dto.js';
 
 export interface IOAuthProvider {
-  getAuthorizationUrl(): Promise<string>;
+  getAuthorizationUrl(
+    state: string,
+    codeChallenge: string
+  ): Promise<string>;
 
   exchangeCode(
     code: string,
