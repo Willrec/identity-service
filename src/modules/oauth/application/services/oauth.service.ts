@@ -9,6 +9,10 @@ import { OAuthDuplicateEmailError } from '../errors/oauth-duplicate-email.error.
 import { prisma } from '../../../../infrastructure/database/prisma.js';
 import { HttpError } from '../../../../shared/errors/HttpError.js';
 import type { Prisma } from '@prisma/client';
+import type { AuthenticationPipelineService } from '../../../auth/services/authentication-pipeline.service.js';
+import { AuthenticationEvent } from '../../../auth/dto/auth.dto.js';
+import type { DeviceInfoDto, LoginResponseDto } from '../../../auth/dto/auth.dto.js';
+import type { UserStatus } from '../../../../shared/types/domain.types.js';
 
 /**
  * OAuthService
@@ -25,7 +29,8 @@ export class OAuthService {
     private readonly registry: IOAuthProviderRegistry,
     private readonly pkceService: IPkceService,
     private readonly stateService: IOAuthStateService,
-    private readonly repository: IOAuthRepository
+    private readonly repository: IOAuthRepository,
+    private readonly authPipelineService: AuthenticationPipelineService
   ) {}
 
   /**
@@ -119,6 +124,7 @@ export class OAuthService {
       return {
         userId: user.id,
         email: user.email,
+        status: user.status as UserStatus,
         result: 'EXISTING_ACCOUNT',
         provider,
       };
@@ -164,6 +170,7 @@ export class OAuthService {
       return {
         userId: existingUser.id,
         email: existingUser.email,
+        status: existingUser.status as UserStatus,
         result: 'LINKED_ACCOUNT',
         provider,
       };
@@ -209,6 +216,7 @@ export class OAuthService {
       return {
         userId: result.id,
         email: result.email,
+        status: 'ACTIVE',
         result: 'NEW_ACCOUNT',
         provider,
       };
@@ -254,11 +262,38 @@ export class OAuthService {
         return {
           userId: user.id,
           email: user.email,
+          status: user.status as UserStatus,
           result: 'LINKED_ACCOUNT',
           provider,
         };
       }
       throw error;
     }
+  }
+
+  /**
+   * authenticateIdentity
+   *
+   * Coordinates the post-resolution session creation and token issuance.
+   * Consumes only the normalized identity object, keeping the process provider-agnostic.
+   */
+  async authenticateIdentity(
+    identity: OAuthIdentityDto,
+    deviceInfo?: DeviceInfoDto
+  ): Promise<LoginResponseDto> {
+    if (identity.status === 'SUSPENDED') {
+      throw HttpError.Forbidden('Account suspended.', 'ACCOUNT_SUSPENDED');
+    }
+    if (identity.status === 'DELETED') {
+      throw HttpError.Forbidden('Account deleted.', 'ACCOUNT_DELETED');
+    }
+
+    return this.authPipelineService.authenticateUser(
+      identity.userId,
+      identity.email,
+      identity.status,
+      AuthenticationEvent.OAUTH_LOGIN_SUCCESS,
+      deviceInfo
+    );
   }
 }

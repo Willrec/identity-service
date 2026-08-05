@@ -1,7 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import type { OAuthService } from '../application/services/oauth.service.js';
 import type { IOAuthFlowStore } from '../infrastructure/storage/oauth-flow-store.interface.js';
+import type { TokenService } from '../../auth/services/token.service.js';
+import type { DeviceInfoDto } from '../../auth/dto/auth.dto.js';
 import { OAuthStateError } from '../application/errors/oauth-state.error.js';
+import { COOKIES } from '../../../config/constants.js';
+import { getRefreshCookieOptions, getCSRFCookieOptions } from '../../../config/cookieOptions.js';
 
 /**
  * OAuthController
@@ -12,7 +16,8 @@ import { OAuthStateError } from '../application/errors/oauth-state.error.js';
 export class OAuthController {
   constructor(
     private readonly oauthService: OAuthService,
-    private readonly flowStore: IOAuthFlowStore
+    private readonly flowStore: IOAuthFlowStore,
+    private readonly tokenService: TokenService
   ) {}
 
   /**
@@ -82,13 +87,31 @@ export class OAuthController {
         storedFlow.codeVerifier
       );
 
-      // Temporary return mechanism for Phase 16.5 verification
-      // Can be replaced by next authentication stage in future phases
+      const authContext = await this.oauthService.resolveIdentity(context);
+
+      const defaultDeviceInfo: DeviceInfoDto = {};
+      if (req.ip !== undefined) defaultDeviceInfo.ip = req.ip;
+      const ua = req.get('User-Agent');
+      if (ua !== undefined) defaultDeviceInfo.userAgent = ua;
+
+      const authResponse = await this.oauthService.authenticateIdentity(authContext, defaultDeviceInfo);
+
+      const refreshToken = authResponse.refreshToken;
+      const csrfToken = this.tokenService.generateCsrfToken();
+
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Pragma', 'no-cache');
+      res.cookie(COOKIES.REFRESH, refreshToken, getRefreshCookieOptions());
+      res.cookie(COOKIES.CSRF, csrfToken, getCSRFCookieOptions());
+
       res.status(200).json({
         success: true,
-        data: context,
+        data: {
+          user: authResponse.user,
+          accessToken: authResponse.accessToken,
+        },
       });
-      } catch (error) {
+    } catch (error) {
       // In compliance with replay protection, ensure store is cleared on failure as well
       try {
         await this.flowStore.clear(res);

@@ -1,9 +1,7 @@
-import {
-  OAuthService,
-  CookieOAuthFlowStore,
-  OAuthController,
-  OAuthRepository,
-} from '../../../modules/oauth/index.js';
+import { OAuthService } from '../../../modules/oauth/application/services/oauth.service.js';
+import { CookieOAuthFlowStore } from '../../../modules/oauth/infrastructure/storage/cookie-oauth-flow-store.js';
+import { OAuthController } from '../../../modules/oauth/controllers/oauth.controller.js';
+import { OAuthRepository } from '../../../modules/oauth/repositories/oauth.repository.js';
 import type {
   IOAuthFlowStore,
   IOAuthProviderRegistry,
@@ -15,6 +13,9 @@ import { OAuthProviderRegistry } from '../../../modules/oauth/infrastructure/pro
 import { FetchOAuthHttpClient } from '../../../modules/oauth/infrastructure/http/fetch-oauth-http-client.js';
 import { PkceService } from '../../../modules/oauth/infrastructure/services/pkce.service.js';
 import { OAuthStateService } from '../../../modules/oauth/infrastructure/services/oauth-state.service.js';
+import { composeAuthenticationPipelineService } from '../auth/auth.composition.js';
+import { TokenService } from '../../../modules/auth/services/token.service.js';
+import { AuthRepository } from '../../../modules/auth/repositories/auth.repository.js';
 import { prisma } from '../../database/prisma.js';
 import { env } from '../../../config/env.js';
 
@@ -30,6 +31,7 @@ export function composeOAuthModule(): OAuthService {
   const stateService = new OAuthStateService();
   const httpClient = new FetchOAuthHttpClient();
   const repository = new OAuthRepository(prisma);
+  const authPipelineService = composeAuthenticationPipelineService();
 
   const googleProvider = new GoogleOAuthProvider(
     {
@@ -46,7 +48,13 @@ export function composeOAuthModule(): OAuthService {
 
   const registry: IOAuthProviderRegistry = new OAuthProviderRegistry(providers);
 
-  return new OAuthService(registry, pkceService, stateService, repository);
+  return new OAuthService(
+    registry,
+    pkceService,
+    stateService,
+    repository,
+    authPipelineService
+  );
 }
 
 /**
@@ -67,6 +75,8 @@ export function composeOAuthFlowStore(): IOAuthFlowStore {
 export function composeOAuthController(): OAuthController {
   const oauthService = composeOAuthModule();
   const oauthFlowStore = composeOAuthFlowStore();
+  const authRepo = new AuthRepository(prisma);
+  const tokenService = new TokenService(authRepo);
 
-  return new OAuthController(oauthService, oauthFlowStore);
+  return new OAuthController(oauthService, oauthFlowStore, tokenService);
 }
