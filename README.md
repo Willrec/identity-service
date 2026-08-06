@@ -100,6 +100,37 @@ sequenceDiagram
     App-->>User: Redirects to authorized dashboard
 ```
 
+### OAuth Federated Login Flow
+- **Initiation**: Generates PKCE parameters, encrypts flow state into a temporary `__Host-oauth-session` cookie, and redirects the browser to Google Accounts.
+- **Callback**: Consumes the cookie and validation parameters, exchanges the code with Google, resolves the user identity (linking existing verified emails or provisioning new users), and issues session/refresh tokens.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App as Client Application
+    participant API as Identity Service
+    participant Google as Google Accounts
+    participant DB as PostgreSQL Database
+
+    User->>App: Clicks "Login with Google"
+    App->>API: GET /api/v1/auth/oauth/google
+    API-->>App: Sets __Host-oauth-session cookie & redirects
+    App-->>User: Redirect to Google
+    User->>Google: Authenticates
+    Google-->>User: Redirect back with auth code & state
+    User->>API: GET /api/v1/auth/oauth/google/callback (with state & code)
+    API->>API: Verify cookie state matches
+    API->>Google: Exchange code for Access Token
+    Google-->>API: Access Token payload
+    API->>Google: Fetch User Profile
+    Google-->>API: Profile payload
+    API->>DB: Resolve user (link or provision user/role)
+    DB-->>API: User resolved
+    API->>DB: Establish session
+    DB-->>API: Session saved
+    API-->>App: Set __Host-refresh cookie + returns Access Token (JSON)
+```
+
 ### Access Token Refresh Flow
 Access tokens are short-lived. Clients automatically query the `/auth/refresh` endpoint using the `__Host-refresh` cookie to retrieve a new access token without requiring manual credentials.
 

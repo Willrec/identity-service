@@ -78,3 +78,9 @@ export interface DeviceInfoDto {
   browser?: string;
   operatingSystem?: string;
 }
+
+export enum AuthenticationEvent {
+  LOGIN_SUCCESS = 'LOGIN_SUCCESS',
+  OAUTH_LOGIN_SUCCESS = 'OAUTH_LOGIN_SUCCESS',
+  REFRESH_TOKEN_ROTATED = 'REFRESH_TOKEN_ROTATED',
+}

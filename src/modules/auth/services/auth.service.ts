@@ -9,12 +9,14 @@ import type {
   AuthTokensDto,
   ResetPasswordDto,
 } from '../dto/auth.dto.js';
+import { AuthenticationEvent } from '../dto/auth.dto.js';
 import type { UserResponseDto } from '../../users/dto/user.dto.js';
 import type { UserService } from '../../users/services/user.service.js';
 import type { TokenService } from './token.service.js';
-import { TokenService as JwtTokenService } from '../../../infrastructure/security/jwt.js';
+import type { TokenService as JwtTokenService } from '../../../infrastructure/security/jwt.js';
 import type { PasswordService } from './password.service.js';
 import type { SessionService } from './session.service.js';
+import type { AuthenticationPipelineService } from './authentication-pipeline.service.js';
 import { HttpError } from '../../../shared/errors/HttpError.js';
 import { EMAIL_VERIFY_TOKEN_TTL_S, RESET_TOKEN_TTL_S } from '../../../config/constants.js';
 
@@ -29,9 +31,9 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
-
     private readonly emailService: EmailService,
-    private readonly jwtTokenService: JwtTokenService = new JwtTokenService(),
+    private readonly jwtTokenService: JwtTokenService,
+    private readonly authPipelineService: AuthenticationPipelineService,
   ) { }
 
   // ──  Register ───────────────────────────────────────────────────────────────
@@ -90,29 +92,13 @@ export class AuthService {
     const valid = await this.passwordService.verify(dto.password, record.passwordHash);
     if (!valid) throw HttpError.Unauthorized('Invalid credentials', 'INVALID_CREDENTIALS');
 
-    // Create session (restored)
-    const session = await this.sessionService.create(record.id, dto.deviceInfo);
-
-    // Issue refresh token
-    const refreshToken = await this.tokenService.issueRefreshToken(record.id, session.id);
-
-    await this.authRepo.createAuditLog({
-      userId: record.id,
-      action: 'LOGIN_SUCCESS',
-      metadata: { email: record.email },
-    });
-
-    const accessToken = this.jwtTokenService.signAccessToken({
-      id: record.id,
-      email: record.email,
-      status: record.status,
-    });
-
-    return {
-      user: { id: record.id, email: record.email, status: record.status },
-      accessToken,
-      refreshToken,
-    };
+    return this.authPipelineService.authenticateUser(
+      record.id,
+      record.email,
+      record.status,
+      AuthenticationEvent.LOGIN_SUCCESS,
+      dto.deviceInfo
+    );
   }
 
   // ── Refresh ────────────────────────────────────────────────────────────────

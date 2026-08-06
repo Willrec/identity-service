@@ -19,3 +19,11 @@ export const getCSRFCookieOptions = (): CookieOptions => ({
   maxAge: REFRESH_TOKEN_TTL_S * 1000,
   priority: 'high',
 });
+
+export const getOAuthFlowCookieOptions = (): CookieOptions => ({
+  httpOnly: true,
+  secure: env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+  maxAge: env.OAUTH_STATE_TTL_S * 1000,
+});
