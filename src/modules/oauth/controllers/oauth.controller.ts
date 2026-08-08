@@ -6,6 +6,7 @@ import type { DeviceInfoDto } from '../../auth/dto/auth.dto.js';
 import { OAuthStateError } from '../application/errors/oauth-state.error.js';
 import { COOKIES } from '../../../config/constants.js';
 import { getRefreshCookieOptions, getCSRFCookieOptions } from '../../../config/cookieOptions.js';
+import { env } from '../../../config/env.js';
 
 /**
  * OAuthController
@@ -18,7 +19,7 @@ export class OAuthController {
     private readonly oauthService: OAuthService,
     private readonly flowStore: IOAuthFlowStore,
     private readonly tokenService: TokenService
-  ) {}
+  ) { }
 
   /**
    * beginGoogleAuth
@@ -104,13 +105,8 @@ export class OAuthController {
       res.cookie(COOKIES.REFRESH, refreshToken, getRefreshCookieOptions());
       res.cookie(COOKIES.CSRF, csrfToken, getCSRFCookieOptions());
 
-      res.status(200).json({
-        success: true,
-        data: {
-          user: authResponse.user,
-          accessToken: authResponse.accessToken,
-        },
-      });
+      const frontendUrl = env.FRONTEND_URL.endsWith('/') ? env.FRONTEND_URL.slice(0, -1) : env.FRONTEND_URL;
+      res.redirect(`${frontendUrl}/auth/oauth/callback`);
     } catch (error) {
       // In compliance with replay protection, ensure store is cleared on failure as well
       try {

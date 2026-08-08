@@ -35,6 +35,7 @@ const envSchema = z.object({
   OAUTH_STATE_TTL_S: z.coerce.number().int().positive().default(300),
   OAUTH_COOKIE_SECRET: z.string().min(32),
   OAUTH_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  FRONTEND_URL: z.string().url(),
 });
 
 const parsed = envSchema.safeParse(process.env);
