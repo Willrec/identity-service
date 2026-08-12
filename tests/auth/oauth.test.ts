@@ -110,10 +110,8 @@ describe('OAuth Authentication Endpoints', () => {
         .query({ code: 'auth-code-123', state })
         .set('Cookie', [cookie]);
 
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.user.email).toBe(email);
-      expect(res.body.data.accessToken).toBeDefined();
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain('/auth/oauth/callback');
 
       const user = await prisma.user.findUnique({
         where: { email },
@@ -159,8 +157,8 @@ describe('OAuth Authentication Endpoints', () => {
         .query({ code: 'auth-code-123', state })
         .set('Cookie', [cookie]);
 
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain('/auth/oauth/callback');
 
       const user = await prisma.user.findUnique({
         where: { email: payload.email },
@@ -212,7 +210,8 @@ describe('OAuth Authentication Endpoints', () => {
         .query({ code: 'auth-code-123', state })
         .set('Cookie', [cookie]);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain('/auth/oauth/callback');
 
       const user = await prisma.user.findUnique({
         where: { email },
@@ -279,7 +278,8 @@ describe('OAuth Authentication Endpoints', () => {
         .query({ code: 'auth-code-123', state })
         .set('Cookie', [cookie]);
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain('/auth/oauth/callback');
 
       const user = await prisma.user.findUnique({
         where: { email: payload.email },
@@ -310,8 +310,11 @@ describe('OAuth Authentication Endpoints', () => {
         .get('/api/v1/auth/oauth/google/callback')
         .query({ code: 'auth-code-123', state })
         .set('Cookie', [cookie]);
-      expect(res1.status).toBe(200);
-      createdUserIds.add(res1.body.data.user.id);
+      expect(res1.status).toBe(302);
+      expect(res1.headers.location).toContain('/auth/oauth/callback');
+      // For replay cleanup mapping in test, fetch user ID from DB since body is empty redirect
+      const replayUser = await prisma.user.findUnique({ where: { email: 'replay-user@example.com' } });
+      createdUserIds.add(replayUser!.id);
 
       // Verify cookies cleared header was returned in res1
       const setCookie = res1.headers['set-cookie'] as string[];
@@ -498,8 +501,8 @@ describe('OAuth Authentication Endpoints', () => {
         .set('Cookie', [cookie]);
 
       // Flow should resolve successfully by linking to the concurrently created user
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.status).toBe(302);
+      expect(res.headers.location).toContain('/auth/oauth/callback');
 
       const user = await prisma.user.findUnique({
         where: { email },
