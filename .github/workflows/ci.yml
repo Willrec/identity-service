@@ -95,6 +95,8 @@ jobs:
       GOOGLE_REDIRECT_URI: http://localhost:3000/api/v1/auth/oauth/google/callback
       OAUTH_COOKIE_SECRET: dummy-oauth-cookie-secret-32-chars-long
       OAUTH_HTTP_TIMEOUT_MS: 10000
+      FRONTEND_URL: http://localhost:5173
+
 
     steps:
       - name: Checkout repository
